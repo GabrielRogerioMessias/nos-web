@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import type { TransactionResponse } from "@/types/dashboard";
 
 function formatCurrency(value: number) {
@@ -42,10 +42,11 @@ export function TransactionListSkeleton() {
 
 interface TransactionRowProps {
   tx: TransactionResponse;
+  onEdit: (tx: TransactionResponse) => void;
   onDelete: (id: string) => Promise<void>;
 }
 
-function TransactionRow({ tx, onDelete }: TransactionRowProps) {
+function TransactionRow({ tx, onEdit, onDelete }: TransactionRowProps) {
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -93,14 +94,22 @@ function TransactionRow({ tx, onDelete }: TransactionRowProps) {
           {formatCurrency(tx.amount)}
         </span>
 
-        {/* estado normal: ícone de lixo */}
+        {/* ações normais */}
         {!confirming && (
-          <button
-            onClick={() => setConfirming(true)}
-            className="rounded p-1 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500"
-          >
-            <Trash2 size={14} />
-          </button>
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => onEdit(tx)}
+              className="rounded p-1 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500"
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              onClick={() => setConfirming(true)}
+              className="rounded p-1 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
         )}
 
         {/* estado de confirmação inline */}
@@ -131,10 +140,11 @@ function TransactionRow({ tx, onDelete }: TransactionRowProps) {
 
 interface TransactionListProps {
   transactions: TransactionResponse[];
+  onEdit: (tx: TransactionResponse) => void;
   onDelete: (id: string) => Promise<void>;
 }
 
-export function TransactionList({ transactions, onDelete }: TransactionListProps) {
+export function TransactionList({ transactions, onEdit, onDelete }: TransactionListProps) {
   if (transactions.length === 0) {
     return (
       <div className="rounded-xl border border-zinc-200 bg-white px-5 py-12 text-center">
@@ -147,7 +157,7 @@ export function TransactionList({ transactions, onDelete }: TransactionListProps
   return (
     <div className="flex flex-col divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
       {transactions.map((tx) => (
-        <TransactionRow key={tx.id} tx={tx} onDelete={onDelete} />
+        <TransactionRow key={tx.id} tx={tx} onEdit={onEdit} onDelete={onDelete} />
       ))}
     </div>
   );

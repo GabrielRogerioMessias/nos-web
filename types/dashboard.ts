@@ -71,3 +71,41 @@ export interface TransactionRequest {
   accountId?: string;
   transactionDate: string;
 }
+
+// ─── Credit Cards ─────────────────────────────────────────────────────────────
+
+export interface CreditCardRequest {
+  name: string;
+  brand?: string;
+  closingDay: number;
+  dueDay: number;
+  creditLimit?: number;
+  color?: string;
+}
+
+export interface CreditCardResponse {
+  id: string;
+  name: string;
+  brand?: string;
+  closingDay: number;
+  dueDay: number;
+  creditLimit?: number;
+  color?: string;
+  active: boolean;
+}
+
+export interface InvoiceTransaction {
+  id: string;
+  description: string;
+  amount: number;
+  transactionDate: string;
+  category?: { name: string };
+}
+
+export interface InvoiceResponse {
+  month: string;
+  closingDate: string;
+  dueDate: string;
+  totalAmount: number;
+  transactions: InvoiceTransaction[];
+}

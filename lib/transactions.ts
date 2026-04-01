@@ -18,6 +18,11 @@ export async function createTransaction(payload: TransactionRequest): Promise<Tr
   return data;
 }
 
+export async function updateTransaction(id: string, payload: TransactionRequest): Promise<TransactionResponse> {
+  const { data } = await api.put<TransactionResponse>(`/transactions/${id}`, payload);
+  return data;
+}
+
 export async function deleteTransaction(id: string): Promise<void> {
   await api.delete(`/transactions/${id}`);
 }

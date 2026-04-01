@@ -26,8 +26,6 @@ function validate(values: FormState): FieldErrors {
   }
   if (!values.password) {
     errors.password = "Senha obrigatória.";
-  } else if (values.password.length < 8) {
-    errors.password = "A senha deve ter no mínimo 8 caracteres.";
   }
   return errors;
 }
@@ -73,7 +71,7 @@ export default function LoginPage() {
     }
   }
 
-  const isDisabled = !values.email || !values.password || loading;
+  const isDisabled = !values.email.trim() || !values.password || loading;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">

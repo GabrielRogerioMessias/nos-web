@@ -8,11 +8,10 @@ import { getAccounts } from "@/lib/accounts";
 import type {
   TransactionType,
   TransactionRequest,
+  TransactionResponse,
   CategoryResponse,
   AccountResponse,
 } from "@/types/dashboard";
-
-// ─── tipos internos ────────────────────────────────────────────────────────────
 
 type Tab = "EXPENSE" | "INCOME" | "TRANSFER";
 
@@ -21,7 +20,7 @@ interface FormState {
   amount: string;
   categoryId: string;
   accountId: string;
-  destAccountId: string; // só para transferência
+  destAccountId: string;
   transactionDate: string;
 }
 
@@ -44,7 +43,16 @@ function todayISO() {
   return new Date().toISOString().split("T")[0];
 }
 
-function validate(values: FormState, tab: Tab): FieldErrors {
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+}
+
+function validate(
+  values: FormState,
+  tab: Tab,
+  accounts: AccountResponse[],
+  editing: TransactionResponse | null
+): FieldErrors {
   const errors: FieldErrors = {};
 
   if (!values.description.trim()) errors.description = "Descrição obrigatória.";
@@ -62,6 +70,19 @@ function validate(values: FormState, tab: Tab): FieldErrors {
     errors.accountId = tab === "TRANSFER" ? "Selecione a conta de origem." : "Selecione a conta.";
   }
 
+  // validação de saldo: só para EXPENSE, quando há conta selecionada
+  if (tab === "EXPENSE" && values.accountId && !isNaN(amount) && amount > 0) {
+    const account = accounts.find((a) => a.id === values.accountId);
+    if (account) {
+      // ao editar, devolve o valor original antes de comparar
+      const originalAmount = editing && editing.type === "EXPENSE" ? editing.amount : 0;
+      const balanceAfter = account.currentBalance + originalAmount - amount;
+      if (balanceAfter < 0) {
+        errors.amount = `Saldo insuficiente. Após esta despesa o saldo seria ${formatCurrency(balanceAfter)} em "${account.name}".`;
+      }
+    }
+  }
+
   if (tab === "TRANSFER") {
     if (!values.destAccountId) {
       errors.destAccountId = "Selecione a conta de destino.";
@@ -75,22 +96,21 @@ function validate(values: FormState, tab: Tab): FieldErrors {
   return errors;
 }
 
-// ─── componente ────────────────────────────────────────────────────────────────
-
 interface TransactionFormProps {
+  editing?: TransactionResponse | null;
   onSave: (payload: TransactionRequest) => Promise<void>;
   onCancel: () => void;
 }
 
-export function TransactionForm({ onSave, onCancel }: TransactionFormProps) {
-  const [tab, setTab] = useState<Tab>("EXPENSE");
+export function TransactionForm({ editing = null, onSave, onCancel }: TransactionFormProps) {
+  const [tab, setTab] = useState<Tab>((editing?.type as Tab) ?? "EXPENSE");
   const [values, setValues] = useState<FormState>({
-    description: "",
-    amount: "",
-    categoryId: "",
-    accountId: "",
+    description: editing?.description ?? "",
+    amount: editing?.amount ? String(editing.amount) : "",
+    categoryId: editing?.category?.id ?? "",
+    accountId: editing?.account?.id ?? "",
     destAccountId: "",
-    transactionDate: todayISO(),
+    transactionDate: editing?.transactionDate ?? todayISO(),
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
@@ -98,98 +118,91 @@ export function TransactionForm({ onSave, onCancel }: TransactionFormProps) {
   const [saving, setSaving] = useState(false);
   const [loadingCats, setLoadingCats] = useState(false);
 
-  // busca categorias ao mudar de aba (não para transferência)
+  // busca categorias ao montar ou ao trocar aba
   useEffect(() => {
     if (tab === "TRANSFER") { setCategories([]); return; }
     setLoadingCats(true);
-    setValues((prev) => ({ ...prev, categoryId: "" }));
+    // ao criar: limpa categoryId. ao editar: mantém o atual
+    if (!editing) setValues((prev) => ({ ...prev, categoryId: "" }));
     getCategories(tab)
       .then(setCategories)
       .finally(() => setLoadingCats(false));
-  }, [tab]);
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // busca contas ativas uma vez
   useEffect(() => {
     getAccounts().then((data) => setAccounts(data.filter((a) => a.active)));
   }, []);
 
   function handleTabChange(next: Tab) {
+    if (editing) return; // aba bloqueada na edição
     setTab(next);
     setFieldErrors({});
   }
 
   function handleChange(field: keyof FormState, value: string) {
     setValues((prev) => ({ ...prev, [field]: value }));
-    if (fieldErrors[field]) {
-      setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
-    }
+    if (fieldErrors[field]) setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
   function handleBlur(field: keyof FieldErrors) {
-    const errors = validate(values, tab);
-    if (errors[field]) setFieldErrors((prev) => ({ ...prev, [field]: errors[field] }));
+    const errs = validate(values, tab, accounts, editing);
+    if (errs[field]) setFieldErrors((prev) => ({ ...prev, [field]: errs[field] }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const errors = validate(values, tab);
-    if (Object.keys(errors).length > 0) { setFieldErrors(errors); return; }
+    const errs = validate(values, tab, accounts, editing);
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
 
     const amount = parseFloat(values.amount);
-
-    let payload: TransactionRequest;
-
-    if (tab === "TRANSFER") {
-      // Transferência: enviamos como EXPENSE na conta de origem
-      // O backend deve lidar com a lógica de espelhamento
-      payload = {
-        type: "TRANSFER",
-        description: values.description.trim(),
-        amount,
-        categoryId: "", // sem categoria em transferências
-        accountId: values.accountId,
-        transactionDate: values.transactionDate,
-      };
-    } else {
-      payload = {
-        type: tab as TransactionType,
-        description: values.description.trim(),
-        amount,
-        categoryId: values.categoryId,
-        accountId: values.accountId || undefined,
-        transactionDate: values.transactionDate,
-      };
-    }
+    const payload: TransactionRequest =
+      tab === "TRANSFER"
+        ? {
+            type: "TRANSFER",
+            description: values.description.trim(),
+            amount,
+            categoryId: "",
+            accountId: values.accountId,
+            transactionDate: values.transactionDate,
+          }
+        : {
+            type: tab as TransactionType,
+            description: values.description.trim(),
+            amount,
+            categoryId: values.categoryId,
+            accountId: values.accountId || undefined,
+            transactionDate: values.transactionDate,
+          };
 
     setSaving(true);
     try {
       await onSave(payload);
     } catch {
-      // erro já tratado e exibido via toast no contexto pai
+      // erro tratado no pai
     } finally {
       setSaving(false);
     }
   }
 
-  const errors = validate(values, tab);
-  const isValid = Object.keys(errors).length === 0;
-
+  const errs = validate(values, tab, accounts, editing);
+  const isValid = Object.keys(errs).length === 0;
   const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
-      {/* abas */}
+      {/* abas — desabilitadas na edição */}
       <div className="flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5">
         {TABS.map(({ key, label }) => (
           <button
             key={key}
             type="button"
             onClick={() => handleTabChange(key)}
+            disabled={!!editing}
             className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
               tab === key
                 ? "bg-white text-zinc-900"
-                : "text-zinc-500 hover:text-zinc-700"
+                : "text-zinc-500 hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
             }`}
           >
             {label}
@@ -197,7 +210,6 @@ export function TransactionForm({ onSave, onCancel }: TransactionFormProps) {
         ))}
       </div>
 
-      {/* campos */}
       <Input
         label="Descrição"
         placeholder="Ex: Supermercado, Salário"
@@ -228,7 +240,6 @@ export function TransactionForm({ onSave, onCancel }: TransactionFormProps) {
         error={fieldErrors.transactionDate}
       />
 
-      {/* categoria — oculta em transferência */}
       {tab !== "TRANSFER" && (
         <div className="flex flex-col gap-1.5">
           <Select
@@ -242,13 +253,12 @@ export function TransactionForm({ onSave, onCancel }: TransactionFormProps) {
           />
           {!loadingCats && categories.length === 0 && (
             <p className="text-xs text-zinc-400">
-              Nenhuma categoria cadastrada. Cadastre categorias no back-end antes de registrar transações.
+              Nenhuma categoria cadastrada para este tipo.
             </p>
           )}
         </div>
       )}
 
-      {/* conta de origem */}
       <Select
         label={tab === "TRANSFER" ? "Conta de origem" : "Conta"}
         options={accountOptions}
@@ -258,7 +268,6 @@ export function TransactionForm({ onSave, onCancel }: TransactionFormProps) {
         error={fieldErrors.accountId}
       />
 
-      {/* conta de destino — só em transferência */}
       {tab === "TRANSFER" && (
         <Select
           label="Conta de destino"
@@ -270,7 +279,6 @@ export function TransactionForm({ onSave, onCancel }: TransactionFormProps) {
         />
       )}
 
-      {/* ações */}
       <div className="mt-2 flex gap-3 border-t border-zinc-100 pt-5">
         <button
           type="button"
@@ -284,7 +292,7 @@ export function TransactionForm({ onSave, onCancel }: TransactionFormProps) {
           disabled={!isValid || saving}
           className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {saving ? "Salvando..." : "Salvar"}
+          {saving ? "Salvando..." : editing ? "Salvar alterações" : "Salvar"}
         </button>
       </div>
     </form>

@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
-import { getTransactions, createTransaction, deleteTransaction } from "@/lib/transactions";
+import {
+  getTransactions,
+  createTransaction,
+  updateTransaction,
+  deleteTransaction,
+} from "@/lib/transactions";
 import type { TransactionResponse, TransactionRequest } from "@/types/dashboard";
 import { SlideOver } from "@/components/ui/SlideOver";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
@@ -16,6 +21,7 @@ export default function ExtratoPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(0);
   const [slideOpen, setSlideOpen] = useState(false);
+  const [editing, setEditing] = useState<TransactionResponse | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
   function addToast(message: string, type: ToastData["type"] = "success") {
@@ -43,11 +49,31 @@ export default function ExtratoPage() {
     loadTransactions(page);
   }, [page, loadTransactions]);
 
+  function openNew() {
+    setEditing(null);
+    setSlideOpen(true);
+  }
+
+  function openEdit(tx: TransactionResponse) {
+    setEditing(tx);
+    setSlideOpen(true);
+  }
+
+  function closeSlide() {
+    setSlideOpen(false);
+    setEditing(null);
+  }
+
   async function handleSave(payload: TransactionRequest) {
     try {
-      await createTransaction(payload);
-      setSlideOpen(false);
-      addToast("Transação registrada com sucesso.");
+      if (editing) {
+        await updateTransaction(editing.id, payload);
+        addToast("Transação atualizada com sucesso.");
+      } else {
+        await createTransaction(payload);
+        addToast("Transação registrada com sucesso.");
+      }
+      closeSlide();
       if (page === 0) {
         loadTransactions(0);
       } else {
@@ -68,7 +94,6 @@ export default function ExtratoPage() {
   return (
     <>
       <div className="flex flex-col gap-6">
-        {/* cabeçalho */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-medium text-zinc-900">Extrato</h1>
@@ -81,7 +106,7 @@ export default function ExtratoPage() {
             )}
           </div>
           <button
-            onClick={() => setSlideOpen(true)}
+            onClick={openNew}
             className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
           >
             <Plus size={15} />
@@ -89,14 +114,16 @@ export default function ExtratoPage() {
           </button>
         </div>
 
-        {/* lista */}
         {transactions === null ? (
           <TransactionListSkeleton />
         ) : (
-          <TransactionList transactions={transactions} onDelete={handleDelete} />
+          <TransactionList
+            transactions={transactions}
+            onEdit={openEdit}
+            onDelete={handleDelete}
+          />
         )}
 
-        {/* paginação */}
         {totalPages > 1 && transactions !== null && (
           <div className="flex items-center justify-center gap-3">
             <button
@@ -122,12 +149,13 @@ export default function ExtratoPage() {
 
       <SlideOver
         open={slideOpen}
-        onClose={() => setSlideOpen(false)}
-        title="Nova transação"
+        onClose={closeSlide}
+        title={editing ? "Editar transação" : "Nova transação"}
       >
         <TransactionForm
+          editing={editing}
           onSave={handleSave}
-          onCancel={() => setSlideOpen(false)}
+          onCancel={closeSlide}
         />
       </SlideOver>
 

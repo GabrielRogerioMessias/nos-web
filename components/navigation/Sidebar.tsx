@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ScrollText, Landmark, CreditCard, Plus } from "lucide-react";
+import { Home, ScrollText, Landmark, CreditCard, Plus, UserCircle } from "lucide-react";
 import { useTransactionForm } from "@/components/transactions/TransactionContext";
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { href: "/extrato", label: "Extrato", icon: ScrollText },
   { href: "/contas", label: "Contas", icon: Landmark },
   { href: "/cartoes", label: "Cartões", icon: CreditCard },
+  { href: "/profile", label: "Perfil", icon: UserCircle },
 ];
 
 export function Sidebar() {

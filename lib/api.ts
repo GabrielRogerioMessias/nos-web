@@ -8,12 +8,9 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const isAuthRoute = config.url?.startsWith("/auth");
-  if (!isAuthRoute) {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers.set("Authorization", `Bearer ${token}`);
-    }
+  const token = localStorage.getItem("accessToken");
+  if (token) {
+    config.headers.set("Authorization", `Bearer ${token}`);
   }
   return config;
 });
@@ -21,7 +18,7 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 || error.response?.status === 403) {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       window.location.href = "/login";

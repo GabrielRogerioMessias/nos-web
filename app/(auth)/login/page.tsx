@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import { AxiosError } from "axios";
 import { Input } from "@/components/ui/Input";
 import { login, saveTokens } from "@/lib/auth";
@@ -17,25 +18,13 @@ interface FieldErrors {
   password?: string;
 }
 
-function validate(values: FormState): FieldErrors {
-  const errors: FieldErrors = {};
-  if (!values.email) {
-    errors.email = "E-mail obrigatório.";
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
-    errors.email = "Formato de e-mail inválido.";
-  }
-  if (!values.password) {
-    errors.password = "Senha obrigatória.";
-  }
-  return errors;
-}
-
 export default function LoginPage() {
   const router = useRouter();
   const [values, setValues] = useState<FormState>({ email: "", password: "" });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   function handleChange(field: keyof FormState, value: string) {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -43,20 +32,31 @@ export default function LoginPage() {
     if (apiError) setApiError(null);
   }
 
-  function handleBlur(field: keyof FormState) {
-    const errors = validate(values);
-    if (errors[field]) setFieldErrors((prev) => ({ ...prev, [field]: errors[field] }));
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const errors = validate(values);
-    if (Object.keys(errors).length > 0) { setFieldErrors(errors); return; }
+    e.stopPropagation();
+
+    const trimmedEmail = values.email.trim();
+    const errors: FieldErrors = {};
+
+    if (!trimmedEmail) {
+      errors.email = "E-mail obrigatório.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      errors.email = "Formato de e-mail inválido.";
+    }
+    if (!values.password) {
+      errors.password = "Senha obrigatória.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
 
     setLoading(true);
     setApiError(null);
     try {
-      const auth = await login(values.email, values.password);
+      const auth = await login(trimmedEmail, values.password);
       saveTokens(auth);
       router.replace("/");
     } catch (err) {
@@ -70,8 +70,6 @@ export default function LoginPage() {
       setLoading(false);
     }
   }
-
-  const isDisabled = !values.email.trim() || !values.password || loading;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
@@ -92,24 +90,51 @@ export default function LoginPage() {
             placeholder="voce@email.com"
             value={values.email}
             onChange={(e) => handleChange("email", e.target.value)}
-            onBlur={() => handleBlur("email")}
             error={fieldErrors.email}
             autoComplete="email"
+            inputMode="email"
           />
-          <Input
-            label="Senha"
-            type="password"
-            placeholder="••••••••"
-            value={values.password}
-            onChange={(e) => handleChange("password", e.target.value)}
-            onBlur={() => handleBlur("password")}
-            error={fieldErrors.password}
-            autoComplete="current-password"
-          />
+
+          {/* campo de senha com toggle de visibilidade */}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="password" className="text-sm text-zinc-600">
+              Senha
+            </label>
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={values.password}
+                autoComplete="current-password"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                onChange={(e) => handleChange("password", e.target.value)}
+                className={`w-full rounded-lg border px-3.5 py-2.5 pr-10 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 ${
+                  fieldErrors.password ? "border-red-300 bg-red-50/40" : "border-zinc-200 bg-white"
+                }`}
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 z-10 cursor-pointer p-2 text-zinc-400 hover:text-zinc-600"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {fieldErrors.password && (
+              <p className="text-xs text-red-400">{fieldErrors.password}</p>
+            )}
+          </div>
+
           {apiError && <p className="text-sm text-red-400">{apiError}</p>}
+
           <button
             type="submit"
-            disabled={isDisabled}
+            disabled={loading}
+            onTouchEnd={(e) => e.stopPropagation()}
             className="mt-2 w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {loading ? "Entrando..." : "Entrar"}

@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { getBalance, getIncomeVsExpense, getAccounts } from "@/lib/dashboard";
+import { getTransactions } from "@/lib/transactions";
 import type {
   BalanceResponse,
   IncomeVsExpenseResponse,
   AccountResponse,
+  TransactionResponse,
 } from "@/types/dashboard";
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -18,6 +22,11 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function formatDate(dateStr: string) {
+  const [year, month, day] = dateStr.split("-");
+  return `${day}/${month}`;
+}
+
 function greeting() {
   const h = new Date().getHours();
   if (h < 12) return "Bom dia";
@@ -25,7 +34,7 @@ function greeting() {
   return "Boa noite";
 }
 
-// ─── skeletons ───────────────────────────────────────────────────────────────
+// ─── skeletons ────────────────────────────────────────────────────────────────
 
 function BalanceSkeleton() {
   return (
@@ -34,7 +43,7 @@ function BalanceSkeleton() {
       <div className="mt-4 h-10 w-52 animate-pulse rounded bg-zinc-200" />
       <div className="my-5 border-t border-zinc-100" />
       <div className="grid grid-cols-3 gap-4">
-        {Array.from({ length: 3 }).map((_, i) => (
+        {Array.from({ length: 2 }).map((_, i) => (
           <div key={i}>
             <div className="h-3 w-16 animate-pulse rounded bg-zinc-100" />
             <div className="mt-2 h-5 w-24 animate-pulse rounded bg-zinc-200" />
@@ -81,7 +90,29 @@ function AccountsSkeleton() {
   );
 }
 
-// ─── seção de desempenho ─────────────────────────────────────────────────────
+function RecentTransactionsSkeleton() {
+  return (
+    <div>
+      <div className="mb-4 h-4 w-40 animate-pulse rounded bg-zinc-200" />
+      <div className="flex flex-col divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex items-center justify-between px-5 py-4">
+            <div className="flex items-center gap-4">
+              <div className="h-3 w-10 animate-pulse rounded bg-zinc-100" />
+              <div>
+                <div className="h-3.5 w-32 animate-pulse rounded bg-zinc-200" />
+                <div className="mt-1.5 h-3 w-20 animate-pulse rounded bg-zinc-100" />
+              </div>
+            </div>
+            <div className="h-4 w-16 animate-pulse rounded bg-zinc-200" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── seção de desempenho ──────────────────────────────────────────────────────
 
 function PerformanceSection({ data }: { data: IncomeVsExpenseResponse }) {
   const months = data.months.slice(-6);
@@ -94,52 +125,31 @@ function PerformanceSection({ data }: { data: IncomeVsExpenseResponse }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-6">
       <p className="mb-5 text-sm font-medium text-zinc-900">Últimos 6 meses</p>
-
       <div className="flex flex-col gap-4">
         {months.map((m) => {
           const incomeWidth = maxAbsolute > 0 ? (m.totalIncome / maxAbsolute) * 100 : 0;
           const expenseWidth = maxAbsolute > 0 ? (m.totalExpense / maxAbsolute) * 100 : 0;
-
           return (
             <div key={m.month}>
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="text-xs text-zinc-400">{m.month}</span>
-                <span
-                  className={`text-xs font-medium ${
-                    m.balance >= 0 ? "text-zinc-700" : "text-zinc-500"
-                  }`}
-                >
-                  {m.balance >= 0 ? "+" : ""}
-                  {formatCurrency(m.balance)}
+                <span className={`text-xs font-medium ${m.balance >= 0 ? "text-zinc-700" : "text-zinc-500"}`}>
+                  {m.balance >= 0 ? "+" : ""}{formatCurrency(m.balance)}
                 </span>
               </div>
-
-              {/* barra de receita */}
               <div className="mb-1 flex items-center gap-2">
                 <span className="w-14 text-right text-[10px] text-zinc-400">entrada</span>
                 <div className="flex-1 rounded-full bg-zinc-100" style={{ height: 4 }}>
-                  <div
-                    className="h-full rounded-full bg-zinc-400 transition-all duration-500"
-                    style={{ width: `${incomeWidth}%` }}
-                  />
+                  <div className="h-full rounded-full bg-zinc-400 transition-all duration-500" style={{ width: `${incomeWidth}%` }} />
                 </div>
-                <span className="w-20 text-[10px] text-zinc-500">
-                  {formatCurrency(m.totalIncome)}
-                </span>
+                <span className="w-20 text-[10px] text-zinc-500">{formatCurrency(m.totalIncome)}</span>
               </div>
-
-              {/* barra de despesa */}
               <div className="flex items-center gap-2">
                 <span className="w-14 text-right text-[10px] text-zinc-400">saída</span>
                 <div className="flex-1 rounded-full bg-zinc-100" style={{ height: 4 }}>
-                  <div
-                    className="h-full rounded-full bg-zinc-300 transition-all duration-500"
-                    style={{ width: `${expenseWidth}%` }}
-                  />
+                  <div className="h-full rounded-full bg-zinc-300 transition-all duration-500" style={{ width: `${expenseWidth}%` }} />
                 </div>
-                <span className="w-20 text-[10px] text-zinc-500">
-                  {formatCurrency(m.totalExpense)}
-                </span>
+                <span className="w-20 text-[10px] text-zinc-500">{formatCurrency(m.totalExpense)}</span>
               </div>
             </div>
           );
@@ -149,20 +159,73 @@ function PerformanceSection({ data }: { data: IncomeVsExpenseResponse }) {
   );
 }
 
-// ─── página ──────────────────────────────────────────────────────────────────
+// ─── transações recentes ──────────────────────────────────────────────────────
+
+function RecentTransactions({ transactions }: { transactions: TransactionResponse[] }) {
+  if (transactions.length === 0) return null;
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm font-medium text-zinc-900">Transações recentes</p>
+        <Link
+          href="/extrato"
+          className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700"
+        >
+          Ver todas <ChevronRight size={12} />
+        </Link>
+      </div>
+
+      <div className="flex flex-col divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
+        {transactions.map((tx) => {
+          const isExpense = tx.type === "EXPENSE";
+          const isTransfer = tx.type === "TRANSFER";
+          return (
+            <div key={tx.id} className="flex items-center justify-between gap-4 px-5 py-4">
+              <div className="flex items-center gap-4">
+                <span className="w-10 flex-shrink-0 text-xs tabular-nums text-zinc-400">
+                  {formatDate(tx.transactionDate)}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-zinc-900">{tx.description}</p>
+                  <p className="truncate text-xs text-zinc-400">{tx.category?.name ?? "—"}</p>
+                </div>
+              </div>
+              <span className={`flex-shrink-0 text-sm tabular-nums ${
+                isExpense ? "text-zinc-500" : isTransfer ? "text-zinc-400" : "text-zinc-900"
+              }`}>
+                {isExpense ? "– " : isTransfer ? "" : "+ "}
+                {formatCurrency(tx.amount)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── página ───────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
   const [balance, setBalance] = useState<BalanceResponse | null>(null);
   const [performance, setPerformance] = useState<IncomeVsExpenseResponse | null>(null);
   const [accounts, setAccounts] = useState<AccountResponse[] | null>(null);
+  const [recentTx, setRecentTx] = useState<TransactionResponse[] | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    Promise.all([getBalance(), getIncomeVsExpense(6), getAccounts()])
-      .then(([b, p, a]) => {
+    Promise.all([
+      getBalance(),
+      getIncomeVsExpense(6),
+      getAccounts(),
+      getTransactions(0),
+    ])
+      .then(([b, p, a, tx]) => {
         setBalance(b);
         setPerformance(p);
         setAccounts(a.filter((acc) => acc.active));
+        setRecentTx(tx.content.slice(0, 5));
       })
       .catch(() => setError(true));
   }, []);
@@ -179,76 +242,56 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* saudação */}
       <div>
         <p className="text-sm text-zinc-500">{greeting()}</p>
       </div>
 
       {/* saldo */}
-      {balance === null ? (
-        <BalanceSkeleton />
-      ) : (
+      {balance === null ? <BalanceSkeleton /> : (
         <div className="rounded-xl border border-zinc-200 bg-white p-6">
           <p className="text-sm text-zinc-500">Saldo disponível</p>
-          <p
-            className={`mt-3 text-4xl font-light tracking-tight ${
-              isNegative ? "text-zinc-500" : "text-zinc-900"
-            }`}
-          >
+          <p className={`mt-3 text-4xl font-light tracking-tight ${isNegative ? "text-zinc-500" : "text-zinc-900"}`}>
             {formatCurrency(balance.availableBalance)}
           </p>
-
           <div className="my-5 border-t border-zinc-100" />
-
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-zinc-400">Em contas</p>
-              <p className="mt-1 text-sm text-zinc-700">
-                {formatCurrency(balance.totalAccounts)}
-              </p>
+              <p className="mt-1 text-sm text-zinc-700">{formatCurrency(balance.totalAccounts)}</p>
             </div>
             <div>
               <p className="text-xs text-zinc-400">Em cofres</p>
-              <p className="mt-1 text-sm text-zinc-700">
-                {formatCurrency(balance.totalVaults)}
-              </p>
+              <p className="mt-1 text-sm text-zinc-700">{formatCurrency(balance.totalVaults)}</p>
             </div>
           </div>
         </div>
       )}
 
+      {/* transações recentes */}
+      {recentTx === null ? <RecentTransactionsSkeleton /> : (
+        <RecentTransactions transactions={recentTx} />
+      )}
+
       {/* desempenho */}
-      {performance === null ? (
-        <PerformanceSkeleton />
-      ) : (
+      {performance === null ? <PerformanceSkeleton /> : (
         <PerformanceSection data={performance} />
       )}
 
       {/* contas */}
-      {accounts === null ? (
-        <AccountsSkeleton />
-      ) : accounts.length > 0 ? (
+      {accounts === null ? <AccountsSkeleton /> : accounts.length > 0 ? (
         <div>
           <p className="mb-4 text-sm font-medium text-zinc-900">Contas</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {accounts.map((acc) => (
-              <div
-                key={acc.id}
-                className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-4 py-3"
-              >
+              <div key={acc.id} className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-4 py-3">
                 <div className="flex items-center gap-2.5">
-                  <span
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: acc.color ?? "#a1a1aa" }}
-                  />
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: acc.color ?? "#a1a1aa" }} />
                   <div>
                     <p className="text-sm text-zinc-900">{acc.name}</p>
                     <p className="text-xs text-zinc-400 capitalize">{acc.type.toLowerCase()}</p>
                   </div>
                 </div>
-                <p className="text-sm text-zinc-700">
-                  {formatCurrency(acc.initialBalance)}
-                </p>
+                <p className="text-sm text-zinc-700">{formatCurrency(acc.currentBalance ?? acc.initialBalance)}</p>
               </div>
             ))}
           </div>

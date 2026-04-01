@@ -35,3 +35,39 @@ export interface AccountRequest {
   initialBalance?: number;
   color?: string;
 }
+
+// ─── Transactions ─────────────────────────────────────────────────────────────
+
+export type TransactionType = "INCOME" | "EXPENSE" | "TRANSFER";
+
+export interface CategoryResponse {
+  id: string;
+  name: string;
+  type: string;
+  icon: string;
+  color: string;
+}
+
+export interface TransactionResponse {
+  id: string;
+  type: TransactionType;
+  description: string;
+  amount: number;
+  transactionDate: string;
+  category: CategoryResponse;
+  account: { id: string; name: string } | null;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalPages: number;
+}
+
+export interface TransactionRequest {
+  type: TransactionType;
+  description: string;
+  amount: number;
+  categoryId: string;
+  accountId?: string;
+  transactionDate: string;
+}

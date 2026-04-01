@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ScrollText, Landmark, CreditCard } from "lucide-react";
+import { Home, ScrollText, Landmark, CreditCard, Plus } from "lucide-react";
+import { useTransactionForm } from "@/components/transactions/TransactionContext";
 
 const navItems = [
   { href: "/", label: "Início", icon: Home },
@@ -13,6 +14,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { openTransactionForm } = useTransactionForm();
 
   return (
     <aside className="hidden md:flex fixed top-0 left-0 h-full w-64 flex-col border-r border-zinc-200 bg-white px-4 py-8">
@@ -39,6 +41,17 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* botão de registrar transação */}
+      <div className="mt-auto px-2">
+        <button
+          onClick={openTransactionForm}
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+        >
+          <Plus size={15} />
+          Registrar
+        </button>
+      </div>
     </aside>
   );
 }

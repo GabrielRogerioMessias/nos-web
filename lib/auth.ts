@@ -16,11 +16,11 @@ export async function register(
 }
 
 export function saveTokens(auth: AuthResponse) {
-  localStorage.setItem("token", auth.token);
+  localStorage.setItem("accessToken", auth.accessToken);
   localStorage.setItem("refreshToken", auth.refreshToken);
 }
 
 export function clearTokens() {
-  localStorage.removeItem("token");
+  localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
 }

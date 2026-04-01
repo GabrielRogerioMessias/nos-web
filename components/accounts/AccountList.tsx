@@ -145,7 +145,7 @@ export function AccountList({ accounts, onEdit, onToggle, onDelete }: AccountLis
 
           <div className="flex items-center gap-4">
             <p className="text-sm tabular-nums text-zinc-700">
-              {formatCurrency(acc.currentBalance ?? acc.initialBalance)}
+              {formatCurrency(Number(acc.currentBalance ?? acc.initialBalance ?? 0))}
             </p>
             <ActionsMenu
               account={acc}

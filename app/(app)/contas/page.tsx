@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import {
   getAccounts,
+  getAccountBalance,
   createAccount,
   updateAccount,
   deleteAccount,
@@ -41,8 +42,13 @@ export default function ContasPage() {
 
   const loadAccounts = useCallback(async () => {
     try {
-      const data = await getAccounts();
-      setAccounts(data);
+      const list = await getAccounts();
+      const balances = await Promise.all(list.map((a) => getAccountBalance(a.id)));
+      const merged = list.map((a, i) => ({
+        ...a,
+        currentBalance: Number(balances[i].currentBalance),
+      }));
+      setAccounts(merged);
     } catch {
       addToast("Não foi possível carregar as contas.", "error");
     }
@@ -77,7 +83,9 @@ export default function ContasPage() {
         addToast("Conta atualizada com sucesso.");
       } else {
         const created = await createAccount(payload);
-        setAccounts((prev) => (prev ? [...prev, created] : [created]));
+        const bal = await getAccountBalance(created.id);
+        const enriched = { ...created, currentBalance: Number(bal.currentBalance) };
+        setAccounts((prev) => (prev ? [...prev, enriched] : [enriched]));
         addToast("Conta criada com sucesso.");
       }
       closeSlide();
@@ -87,9 +95,10 @@ export default function ContasPage() {
   }
 
   async function handleToggle(account: AccountResponse) {
-    if (account.currentBalance > 0) {
+    const balance = Number(account.currentBalance ?? account.initialBalance ?? 0);
+    if (balance > 0) {
       addToast(
-        `Não é possível inativar: transfira o saldo de ${formatCurrency(account.currentBalance)} para outra conta primeiro.`,
+        `Não é possível inativar: transfira o saldo de ${formatCurrency(balance)} para outra conta primeiro.`,
         "error"
       );
       return;
@@ -110,9 +119,10 @@ export default function ContasPage() {
   }
 
   async function handleDelete(account: AccountResponse) {
-    if (account.currentBalance > 0) {
+    const balance = Number(account.currentBalance ?? account.initialBalance ?? 0);
+    if (balance > 0) {
       addToast(
-        `Não é possível excluir: transfira o saldo de ${formatCurrency(account.currentBalance)} para outra conta primeiro.`,
+        `Não é possível excluir: transfira o saldo de ${formatCurrency(balance)} para outra conta primeiro.`,
         "error"
       );
       return;

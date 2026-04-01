@@ -20,10 +20,19 @@ export interface AccountResponse {
   name: string;
   type: string;
   bankName?: string;
-  initialBalance: number;
-  currentBalance: number;
+  initialBalance: number | null;
+  currentBalance: number | null;
   color: string;
   active: boolean;
+}
+
+export interface AccountBalanceResponse {
+  id: string;
+  name: string;
+  initialBalance: number;
+  totalIncome: number;
+  totalExpense: number;
+  currentBalance: number;
 }
 
 export type AccountType = "CHECKING" | "SAVINGS" | "INVESTMENT" | "WALLET";

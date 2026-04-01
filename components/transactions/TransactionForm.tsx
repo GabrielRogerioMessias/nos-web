@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { getCategories } from "@/lib/transactions";
 import { getAccounts } from "@/lib/accounts";
 import type {
@@ -231,12 +232,13 @@ export function TransactionForm({ editing = null, onSave, onCancel }: Transactio
         error={fieldErrors.amount}
       />
 
-      <Input
+      <DatePicker
         label="Data"
-        type="date"
         value={values.transactionDate}
-        onChange={(e) => handleChange("transactionDate", e.target.value)}
-        onBlur={() => handleBlur("transactionDate")}
+        onChange={(iso) => {
+          handleChange("transactionDate", iso ?? "");
+          handleBlur("transactionDate");
+        }}
         error={fieldErrors.transactionDate}
       />
 

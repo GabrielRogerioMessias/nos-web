@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { getBalance, getIncomeVsExpense, getAccounts } from "@/lib/dashboard";
+import { getAccountBalance } from "@/lib/accounts";
 import { getTransactions } from "@/lib/transactions";
+import { getMe } from "@/lib/user";
+import { useTransactionForm } from "@/components/transactions/TransactionContext";
 import type {
   BalanceResponse,
   IncomeVsExpenseResponse,
@@ -115,7 +118,7 @@ function RecentTransactionsSkeleton() {
 // ─── seção de desempenho ──────────────────────────────────────────────────────
 
 function PerformanceSection({ data }: { data: IncomeVsExpenseResponse }) {
-  const months = data.months.slice(-6);
+  const months = data.months.slice(-6).reverse();
   if (months.length === 0) return null;
 
   const maxAbsolute = Math.max(
@@ -208,6 +211,8 @@ function RecentTransactions({ transactions }: { transactions: TransactionRespons
 // ─── página ───────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
+  const { openTransactionForm } = useTransactionForm();
+  const [userName, setUserName] = useState<string | null>(null);
   const [balance, setBalance] = useState<BalanceResponse | null>(null);
   const [performance, setPerformance] = useState<IncomeVsExpenseResponse | null>(null);
   const [accounts, setAccounts] = useState<AccountResponse[] | null>(null);
@@ -220,12 +225,19 @@ export default function HomePage() {
       getIncomeVsExpense(6),
       getAccounts(),
       getTransactions(0),
+      getMe(),
     ])
-      .then(([b, p, a, tx]) => {
+      .then(async ([b, p, a, tx, user]) => {
+        setUserName(user.name.split(" ")[0]);
         setBalance(b);
         setPerformance(p);
-        setAccounts(a.filter((acc) => acc.active));
-        setRecentTx(tx.content.slice(0, 5));
+        const active = a.filter((acc) => acc.active);
+        const balances = await Promise.all(active.map((acc) => getAccountBalance(acc.id)));
+        setAccounts(active.map((acc, i) => ({ ...acc, currentBalance: Number(balances[i].currentBalance) })));
+        const sorted = [...tx.content].sort(
+          (a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime()
+        );
+        setRecentTx(sorted.slice(0, 5));
       })
       .catch(() => setError(true));
   }, []);
@@ -242,8 +254,22 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <p className="text-sm text-zinc-500">{greeting()}</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-baseline gap-1.5">
+          <p className="text-sm text-zinc-500">{greeting()},</p>
+          {userName === null ? (
+            <span className="inline-block h-3.5 w-20 animate-pulse rounded bg-zinc-200" />
+          ) : (
+            <p className="text-sm font-medium text-zinc-900">{userName}</p>
+          )}
+        </div>
+        <button
+          onClick={openTransactionForm}
+          className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+        >
+          <Plus size={15} />
+          Nova transação
+        </button>
       </div>
 
       {/* saldo */}
@@ -291,7 +317,7 @@ export default function HomePage() {
                     <p className="text-xs text-zinc-400 capitalize">{acc.type.toLowerCase()}</p>
                   </div>
                 </div>
-                <p className="text-sm text-zinc-700">{formatCurrency(acc.currentBalance ?? acc.initialBalance)}</p>
+                <p className="text-sm text-zinc-700">{formatCurrency(Number(acc.currentBalance ?? acc.initialBalance ?? 0))}</p>
               </div>
             ))}
           </div>

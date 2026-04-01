@@ -2,17 +2,21 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
-import {
-  getTransactions,
-  createTransaction,
-  updateTransaction,
-  deleteTransaction,
-} from "@/lib/transactions";
-import type { TransactionResponse, TransactionRequest } from "@/types/dashboard";
+import { getTransactions, type TransactionFilters } from "@/lib/transactions";
+import { getAccounts } from "@/lib/accounts";
+import type { AccountResponse, TransactionResponse, TransactionRequest } from "@/types/dashboard";
 import { SlideOver } from "@/components/ui/SlideOver";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
 import { TransactionList, TransactionListSkeleton } from "@/components/transactions/TransactionList";
 import { TransactionForm } from "@/components/transactions/TransactionForm";
+import {
+  TransactionFiltersBar,
+  PeriodSummary,
+  PeriodSummarySkeleton,
+} from "@/components/transactions/TransactionFilters";
+import { createTransaction, updateTransaction, deleteTransaction } from "@/lib/transactions";
+
+const EMPTY_FILTERS: TransactionFilters = {};
 
 let toastIdCounter = 0;
 
@@ -20,6 +24,8 @@ export default function ExtratoPage() {
   const [transactions, setTransactions] = useState<TransactionResponse[] | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(0);
+  const [filters, setFilters] = useState<TransactionFilters>(EMPTY_FILTERS);
+  const [accounts, setAccounts] = useState<AccountResponse[]>([]);
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionResponse | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -33,11 +39,21 @@ export default function ExtratoPage() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }
 
-  const loadTransactions = useCallback(async (p: number) => {
+  // carrega contas uma única vez para popular o select
+  useEffect(() => {
+    getAccounts().catch(() => null).then((data) => {
+      if (data) setAccounts(data.filter((a) => a.active));
+    });
+  }, []);
+
+  const loadTransactions = useCallback(async (p: number, f: TransactionFilters) => {
     setTransactions(null);
     try {
-      const result = await getTransactions(p);
-      setTransactions(result.content);
+      const result = await getTransactions(p, f);
+      const sorted = [...result.content].sort(
+        (a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime()
+      );
+      setTransactions(sorted);
       setTotalPages(result.totalPages);
     } catch {
       addToast("Não foi possível carregar as transações.", "error");
@@ -46,8 +62,18 @@ export default function ExtratoPage() {
   }, []);
 
   useEffect(() => {
-    loadTransactions(page);
-  }, [page, loadTransactions]);
+    loadTransactions(page, filters);
+  }, [page, filters, loadTransactions]);
+
+  function handleFilterChange(next: TransactionFilters) {
+    setFilters(next);
+    setPage(0); // reset pagination on filter change
+  }
+
+  function handleClearFilters() {
+    setFilters(EMPTY_FILTERS);
+    setPage(0);
+  }
 
   function openNew() {
     setEditing(null);
@@ -74,11 +100,7 @@ export default function ExtratoPage() {
         addToast("Transação registrada com sucesso.");
       }
       closeSlide();
-      if (page === 0) {
-        loadTransactions(0);
-      } else {
-        setPage(0);
-      }
+      loadTransactions(page, filters);
     } catch {
       addToast("Erro ao salvar a transação. Verifique os dados e tente novamente.", "error");
       throw new Error("api_error");
@@ -88,12 +110,13 @@ export default function ExtratoPage() {
   async function handleDelete(id: string) {
     await deleteTransaction(id);
     addToast("Transação excluída.");
-    loadTransactions(page);
+    loadTransactions(page, filters);
   }
 
   return (
     <>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
+        {/* cabeçalho */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-medium text-zinc-900">Extrato</h1>
@@ -114,6 +137,22 @@ export default function ExtratoPage() {
           </button>
         </div>
 
+        {/* filtros */}
+        <TransactionFiltersBar
+          filters={filters}
+          accounts={accounts}
+          onChange={handleFilterChange}
+          onClear={handleClearFilters}
+        />
+
+        {/* resumo do período */}
+        {transactions === null ? (
+          <PeriodSummarySkeleton />
+        ) : (
+          <PeriodSummary transactions={transactions} />
+        )}
+
+        {/* lista */}
         {transactions === null ? (
           <TransactionListSkeleton />
         ) : (
@@ -124,6 +163,7 @@ export default function ExtratoPage() {
           />
         )}
 
+        {/* paginação */}
         {totalPages > 1 && transactions !== null && (
           <div className="flex items-center justify-center gap-3">
             <button

@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { AccountResponse, AccountRequest } from "@/types/dashboard";
+import type { AccountResponse, AccountRequest, AccountBalanceResponse } from "@/types/dashboard";
 
 export async function getAccounts(): Promise<AccountResponse[]> {
   const { data } = await api.get<AccountResponse[]>("/accounts");
@@ -22,4 +22,9 @@ export async function deleteAccount(id: string): Promise<void> {
 
 export async function toggleAccount(id: string): Promise<void> {
   await api.patch(`/accounts/${id}/toggle`);
+}
+
+export async function getAccountBalance(id: string): Promise<AccountBalanceResponse> {
+  const { data } = await api.get<AccountBalanceResponse>(`/accounts/${id}/balance`);
+  return data;
 }

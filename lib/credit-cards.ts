@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { CreditCardRequest, CreditCardResponse, InvoiceResponse } from "@/types/dashboard";
+import type { CreditCardRequest, CreditCardResponse, InvoiceResponse, InstallmentPlanRequest, InvoicePaymentRequest } from "@/types/dashboard";
 
 export async function getCreditCards(): Promise<CreditCardResponse[]> {
   const { data } = await api.get<CreditCardResponse[]>("/credit-cards");
@@ -25,4 +25,16 @@ export async function getInvoice(id: string, month: string): Promise<InvoiceResp
     params: { month },
   });
   return data;
+}
+
+export async function createInstallmentPlan(payload: InstallmentPlanRequest): Promise<void> {
+  await api.post("/installment-plans", payload);
+}
+
+export async function deleteInstallmentPlan(id: string): Promise<void> {
+  await api.delete(`/installment-plans/${id}`);
+}
+
+export async function payInvoice(cardId: string, payload: InvoicePaymentRequest): Promise<void> {
+  await api.post(`/credit-cards/${cardId}/pay`, payload);
 }

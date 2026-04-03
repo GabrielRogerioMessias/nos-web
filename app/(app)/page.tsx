@@ -3,13 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Plus } from "lucide-react";
-import { getBalance, getIncomeVsExpense, getAccounts } from "@/lib/dashboard";
+import { getIncomeVsExpense, getAccounts, getCashflow, type CashflowResponse } from "@/lib/dashboard";
 import { getAccountBalance } from "@/lib/accounts";
 import { getTransactions } from "@/lib/transactions";
 import { getMe } from "@/lib/user";
 import { useTransactionForm } from "@/components/transactions/TransactionContext";
 import type {
-  BalanceResponse,
   IncomeVsExpenseResponse,
   AccountResponse,
   TransactionResponse,
@@ -26,7 +25,7 @@ function formatCurrency(value: number) {
 }
 
 function formatDate(dateStr: string) {
-  const [year, month, day] = dateStr.split("-");
+  const [, month, day] = dateStr.split("-");
   return `${day}/${month}`;
 }
 
@@ -45,7 +44,7 @@ function BalanceSkeleton() {
       <div className="h-4 w-20 animate-pulse rounded bg-zinc-200" />
       <div className="mt-4 h-10 w-52 animate-pulse rounded bg-zinc-200" />
       <div className="my-5 border-t border-zinc-100" />
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {Array.from({ length: 2 }).map((_, i) => (
           <div key={i}>
             <div className="h-3 w-16 animate-pulse rounded bg-zinc-100" />
@@ -115,6 +114,60 @@ function RecentTransactionsSkeleton() {
   );
 }
 
+// ─── planning card ────────────────────────────────────────────────────────────
+
+function PlanningCardSkeleton() {
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white p-6">
+      <div className="h-4 w-28 animate-pulse rounded bg-zinc-200" />
+      <div className="mt-4 flex flex-col gap-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex items-center justify-between">
+            <div className="h-3 w-32 animate-pulse rounded bg-zinc-100" />
+            <div className="h-3 w-20 animate-pulse rounded bg-zinc-200" />
+          </div>
+        ))}
+        <div className="my-1 border-t border-zinc-100" />
+        <div className="flex items-center justify-between">
+          <div className="h-4 w-24 animate-pulse rounded bg-zinc-200" />
+          <div className="h-5 w-28 animate-pulse rounded bg-zinc-200" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlanningCard({ data }: { data: CashflowResponse }) {
+  const isFreeNegative = data.freeBalance < 0;
+
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white p-6">
+      <p className="text-sm font-medium text-zinc-900">Saldo Livre</p>
+      <div className="mt-4 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-zinc-500">Saldo atual</span>
+          <span className="text-sm tabular-nums text-zinc-700">{formatCurrency(data.currentBalance)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-zinc-500">(-) Contas fixas</span>
+          <span className="text-sm tabular-nums text-zinc-500">– {formatCurrency(data.committedRecurring)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-zinc-500">(-) Faturas de cartão</span>
+          <span className="text-sm tabular-nums text-zinc-500">– {formatCurrency(data.committedInvoices)}</span>
+        </div>
+        <div className="border-t border-zinc-100" />
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-zinc-900">= Saldo livre</span>
+          <span className={`text-base font-semibold tabular-nums ${isFreeNegative ? "text-red-500" : "text-emerald-600"}`}>
+            {formatCurrency(data.freeBalance)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── seção de desempenho ──────────────────────────────────────────────────────
 
 function PerformanceSection({ data }: { data: IncomeVsExpenseResponse }) {
@@ -172,7 +225,7 @@ function RecentTransactions({ transactions }: { transactions: TransactionRespons
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm font-medium text-zinc-900">Transações recentes</p>
         <Link
-          href="/extrato"
+          href="/extrato?from=dash"
           className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700"
         >
           Ver todas <ChevronRight size={12} />
@@ -213,34 +266,48 @@ function RecentTransactions({ transactions }: { transactions: TransactionRespons
 export default function HomePage() {
   const { openTransactionForm } = useTransactionForm();
   const [userName, setUserName] = useState<string | null>(null);
-  const [balance, setBalance] = useState<BalanceResponse | null>(null);
+  const [cashflow, setCashflow] = useState<CashflowResponse | null>(null);
   const [performance, setPerformance] = useState<IncomeVsExpenseResponse | null>(null);
   const [accounts, setAccounts] = useState<AccountResponse[] | null>(null);
   const [recentTx, setRecentTx] = useState<TransactionResponse[] | null>(null);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
+  function loadData() {
     Promise.all([
-      getBalance(),
       getIncomeVsExpense(6),
       getAccounts(),
       getTransactions(0),
       getMe(),
+      getCashflow(),
     ])
-      .then(async ([b, p, a, tx, user]) => {
+      .then(async ([p, a, tx, user, cf]) => {
         setUserName(user.name.split(" ")[0]);
-        setBalance(b);
         setPerformance(p);
+        setCashflow(cf);
+
+        // enriquece contas com saldo real
         const active = a.filter((acc) => acc.active);
         const balances = await Promise.all(active.map((acc) => getAccountBalance(acc.id)));
-        setAccounts(active.map((acc, i) => ({ ...acc, currentBalance: Number(balances[i].currentBalance) })));
+        const enrichedAccounts = active.map((acc, i) => ({
+          ...acc,
+          currentBalance: Number(balances[i].currentBalance),
+        }));
+        setAccounts(enrichedAccounts);
+
+        // transações recentes ordenadas
         const sorted = [...tx.content].sort(
           (a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime()
         );
         setRecentTx(sorted.slice(0, 5));
       })
       .catch(() => setError(true));
-  }, []);
+  }
+
+  useEffect(() => {
+    loadData();
+    window.addEventListener("transaction-updated", loadData);
+    return () => window.removeEventListener("transaction-updated", loadData);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) {
     return (
@@ -249,8 +316,6 @@ export default function HomePage() {
       </p>
     );
   }
-
-  const isNegative = balance !== null && balance.availableBalance < 0;
 
   return (
     <div className="flex flex-col gap-8">
@@ -272,25 +337,22 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* saldo */}
-      {balance === null ? <BalanceSkeleton /> : (
-        <div className="rounded-xl border border-zinc-200 bg-white p-6">
-          <p className="text-sm text-zinc-500">Saldo disponível</p>
-          <p className={`mt-3 text-4xl font-light tracking-tight ${isNegative ? "text-zinc-500" : "text-zinc-900"}`}>
-            {formatCurrency(balance.availableBalance)}
-          </p>
-          <div className="my-5 border-t border-zinc-100" />
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-zinc-400">Em contas</p>
-              <p className="mt-1 text-sm text-zinc-700">{formatCurrency(balance.totalAccounts)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-400">Em cofres</p>
-              <p className="mt-1 text-sm text-zinc-700">{formatCurrency(balance.totalVaults)}</p>
-            </div>
+      {/* saldo disponível + saldo livre */}
+      {cashflow === null ? (
+        <>
+          <BalanceSkeleton />
+          <PlanningCardSkeleton />
+        </>
+      ) : (
+        <>
+          <div className="rounded-xl border border-zinc-200 bg-white p-6">
+            <p className="text-sm text-zinc-500">Saldo disponível</p>
+            <p className={`mt-3 text-4xl font-light tracking-tight ${cashflow.currentBalance < 0 ? "text-zinc-500" : "text-zinc-900"}`}>
+              {formatCurrency(cashflow.currentBalance)}
+            </p>
           </div>
-        </div>
+          <PlanningCard data={cashflow} />
+        </>
       )}
 
       {/* transações recentes */}

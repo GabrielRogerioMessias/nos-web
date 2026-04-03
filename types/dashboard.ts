@@ -55,6 +55,7 @@ export interface CategoryResponse {
   type: string;
   icon: string;
   color: string;
+  isDefault: boolean;
 }
 
 export interface TransactionResponse {
@@ -65,6 +66,8 @@ export interface TransactionResponse {
   transactionDate: string;
   category: CategoryResponse;
   account: { id: string; name: string } | null;
+  installmentPlanId?: string;
+  recurringTransactionId?: string;
 }
 
 export interface PageResponse<T> {
@@ -76,9 +79,25 @@ export interface TransactionRequest {
   type: TransactionType;
   description: string;
   amount: number;
+  categoryId?: string;
+  accountId?: string;
+  destinationAccountId?: string;
+  creditCardId?: string;
+  transactionDate: string;
+}
+
+// ─── Recurring Transactions ───────────────────────────────────────────────────
+
+export type RecurringFrequency = "MONTHLY" | "YEARLY";
+
+export interface RecurringTransactionRequest {
+  description: string;
+  amount: number;
+  type: TransactionType;
   categoryId: string;
   accountId?: string;
-  transactionDate: string;
+  frequency: RecurringFrequency;
+  startDate: string;
 }
 
 // ─── Credit Cards ─────────────────────────────────────────────────────────────
@@ -117,4 +136,22 @@ export interface InvoiceResponse {
   dueDate: string;
   totalAmount: number;
   transactions: InvoiceTransaction[];
+}
+
+export interface InvoicePaymentRequest {
+  accountId: string;
+  month: string;
+  amount: number;
+  paymentDate: string;
+}
+
+// ─── Installment Plans ────────────────────────────────────────────────────────
+
+export interface InstallmentPlanRequest {
+  description: string;
+  totalAmount: number;
+  totalInstallments: number;
+  creditCardId: string;
+  categoryId: string;
+  firstInstallmentDate: string;
 }

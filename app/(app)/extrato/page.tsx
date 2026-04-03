@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { getTransactions, type TransactionFilters } from "@/lib/transactions";
 import { getAccounts } from "@/lib/accounts";
 import type { AccountResponse, TransactionResponse, TransactionRequest } from "@/types/dashboard";
@@ -14,13 +15,17 @@ import {
   PeriodSummary,
   PeriodSummarySkeleton,
 } from "@/components/transactions/TransactionFilters";
-import { createTransaction, updateTransaction, deleteTransaction } from "@/lib/transactions";
+import { createTransaction, updateTransaction } from "@/lib/transactions";
 
 const EMPTY_FILTERS: TransactionFilters = {};
 
 let toastIdCounter = 0;
 
 export default function ExtratoPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromDash = searchParams.get("from") === "dash";
+
   const [transactions, setTransactions] = useState<TransactionResponse[] | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(0);
@@ -65,9 +70,16 @@ export default function ExtratoPage() {
     loadTransactions(page, filters);
   }, [page, filters, loadTransactions]);
 
+  // recarrega silenciosamente após qualquer transação salva
+  useEffect(() => {
+    function onUpdated() { loadTransactions(page, filters); }
+    window.addEventListener("transaction-updated", onUpdated);
+    return () => window.removeEventListener("transaction-updated", onUpdated);
+  }, [page, filters, loadTransactions]);
+
   function handleFilterChange(next: TransactionFilters) {
     setFilters(next);
-    setPage(0); // reset pagination on filter change
+    setPage(0);
   }
 
   function handleClearFilters() {
@@ -107,26 +119,31 @@ export default function ExtratoPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    await deleteTransaction(id);
-    addToast("Transação excluída.");
-    loadTransactions(page, filters);
-  }
-
   return (
     <>
       <div className="flex flex-col gap-4">
         {/* cabeçalho */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-medium text-zinc-900">Extrato</h1>
-            {transactions !== null && (
-              <p className="mt-0.5 text-sm text-zinc-500">
-                {transactions.length === 0
-                  ? "Nenhuma transação"
-                  : `${transactions.length} transaç${transactions.length !== 1 ? "ões" : "ão"} nesta página`}
-              </p>
+          <div className="flex items-center gap-2">
+            {fromDash && (
+              <button
+                onClick={() => router.push("/")}
+                className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+                aria-label="Voltar ao dashboard"
+              >
+                <ArrowLeft size={16} />
+              </button>
             )}
+            <div>
+              <h1 className="text-xl font-medium text-zinc-900">Extrato</h1>
+              {transactions !== null && (
+                <p className="mt-0.5 text-sm text-zinc-500">
+                  {transactions.length === 0
+                    ? "Nenhuma transação"
+                    : `${transactions.length} transaç${transactions.length !== 1 ? "ões" : "ão"} nesta página`}
+                </p>
+              )}
+            </div>
           </div>
           <button
             onClick={openNew}
@@ -159,7 +176,10 @@ export default function ExtratoPage() {
           <TransactionList
             transactions={transactions}
             onEdit={openEdit}
-            onDelete={handleDelete}
+            onDeleteSuccess={(message) => {
+              addToast(message);
+              loadTransactions(page, filters);
+            }}
           />
         )}
 
@@ -195,6 +215,11 @@ export default function ExtratoPage() {
         <TransactionForm
           editing={editing}
           onSave={handleSave}
+          onSuccess={() => {
+            closeSlide();
+            addToast("Registrado com sucesso.");
+            loadTransactions(page, filters);
+          }}
           onCancel={closeSlide}
         />
       </SlideOver>

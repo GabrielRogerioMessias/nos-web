@@ -1,8 +1,14 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-background: #fafafa;
   --color-foreground: #18181b;
+}
+
+:root {
+  color-scheme: light dark;
 }
 
 body {
@@ -10,7 +16,31 @@ body {
   color: #18181b;
 }
 
+.dark body {
+  background-color: #09090b;
+  color: #fafafa;
+}
+
 *:focus-visible {
   outline: none;
   box-shadow: 0 0 0 1px #a1a1aa;
+}
+
+/* Fix WebKit Autofill — light mode */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #18181b !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Fix WebKit Autofill — dark mode */
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #18181b inset !important;
+  -webkit-text-fill-color: #f4f4f5 !important;
 }

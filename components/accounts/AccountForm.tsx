@@ -107,7 +107,7 @@ export function AccountForm({ editing, onSave, onCancel }: AccountFormProps) {
   const isValid = values.name.trim() !== "" && values.type !== "";
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} noValidate className="flex h-full flex-col gap-5">
       <Input
         label="Nome da conta"
         placeholder="Ex: Nubank, Carteira"
@@ -135,7 +135,7 @@ export function AccountForm({ editing, onSave, onCancel }: AccountFormProps) {
 
       {/* saldo inicial — desabilitado na edição */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-sm text-zinc-600">Saldo inicial</label>
+        <label className="text-sm text-zinc-600 dark:text-zinc-400">Saldo inicial</label>
         <input
           type="number"
           min="0"
@@ -143,10 +143,10 @@ export function AccountForm({ editing, onSave, onCancel }: AccountFormProps) {
           value={values.initialBalance}
           onChange={(e) => handleChange("initialBalance", e.target.value)}
           disabled={!!editing}
-          className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400"
+          className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-500 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500"
         />
         {editing && (
-          <p className="text-xs text-zinc-400">
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">
             Para ajustar o saldo de contas ativas, crie uma transação de Ajuste.
           </p>
         )}
@@ -154,35 +154,41 @@ export function AccountForm({ editing, onSave, onCancel }: AccountFormProps) {
 
       {/* seletor de cor */}
       <div className="flex flex-col gap-1.5">
-        <span className="text-sm text-zinc-600">Cor</span>
+        <span className="text-sm text-zinc-600 dark:text-zinc-400">Cor</span>
         <div className="flex flex-wrap gap-2">
           {COLOR_OPTIONS.map((c) => (
             <button
               key={c}
               type="button"
               onClick={() => handleChange("color", c)}
-              className={`h-6 w-6 rounded-full border-2 transition-all ${
-                values.color === c ? "border-zinc-900 scale-110" : "border-transparent"
+              className={`relative h-7 w-7 rounded-full transition-transform hover:scale-110 focus:outline-none ${
+                values.color === c ? "scale-110" : ""
               }`}
               style={{ backgroundColor: c }}
-            />
+            >
+              {values.color === c && (
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <span className="h-2.5 w-2.5 rounded-full bg-white/80" />
+                </span>
+              )}
+            </button>
           ))}
         </div>
       </div>
 
       {/* ações */}
-      <div className="mt-2 flex gap-3 border-t border-zinc-100 pt-5">
+      <div className="mt-auto flex gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100"
+          className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={!isValid || saving}
-          className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           {saving ? "Salvando..." : editing ? "Salvar alterações" : "Criar conta"}
         </button>

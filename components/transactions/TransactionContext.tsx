@@ -41,6 +41,7 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
       await createTransaction(payload);
       setOpen(false);
       addToast("Transação registrada com sucesso.");
+      // evento já disparado pelo TransactionForm após onSave resolver
     } catch (err: unknown) {
       let message = "Erro ao salvar a transação. Tente novamente.";
       if (err && typeof err === "object" && "response" in err) {
@@ -59,7 +60,15 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
       {children}
 
       <SlideOver open={open} onClose={() => setOpen(false)} title="Nova transação">
-        <TransactionForm onSave={handleSave} onCancel={() => setOpen(false)} />
+        <TransactionForm
+          onSave={handleSave}
+          onSuccess={() => {
+            setOpen(false);
+            addToast("Transação registrada com sucesso.");
+            window.dispatchEvent(new CustomEvent("transaction-updated"));
+          }}
+          onCancel={() => setOpen(false)}
+        />
       </SlideOver>
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />

@@ -26,8 +26,8 @@ export function Toast({ toast, onDismiss }: ToastProps) {
     <div
       className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm shadow-sm ${
         toast.type === "success"
-          ? "border-zinc-200 bg-white text-zinc-900"
-          : "border-red-100 bg-red-50 text-red-700"
+          ? "border-zinc-200 bg-white text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          : "border-red-100 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400"
       }`}
     >
       <span className="flex-1">{toast.message}</span>

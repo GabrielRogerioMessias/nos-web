@@ -67,7 +67,7 @@ export function DatePicker({
   return (
     <div className="relative flex flex-col gap-1.5" ref={containerRef}>
       {label && (
-        <span className="text-sm text-zinc-600">{label}</span>
+        <span className="text-sm text-zinc-600 dark:text-zinc-400">{label}</span>
       )}
 
       {/* trigger */}
@@ -76,19 +76,19 @@ export function DatePicker({
         disabled={disabled}
         onClick={() => !disabled && setOpen((v) => !v)}
         className={`flex w-full items-center justify-between rounded-lg border px-3.5 py-2.5 text-sm outline-none transition-colors
-          ${open ? "border-zinc-400" : "border-zinc-200"}
-          ${error ? "border-red-300 bg-red-50/40" : "bg-white"}
-          ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:border-zinc-300"}
-          ${selected ? "text-zinc-900" : "text-zinc-400"}`}
+          ${open ? "border-zinc-400 dark:border-zinc-500" : "border-zinc-200 dark:border-zinc-700"}
+          ${error ? "border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40" : "bg-white dark:bg-zinc-900"}
+          ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-600"}
+          ${selected ? "text-zinc-900 dark:text-zinc-50" : "text-zinc-400 dark:text-zinc-600"}`}
       >
         <span className="flex items-center gap-2.5">
-          <CalendarDays size={15} className="flex-shrink-0 text-zinc-400" />
+          <CalendarDays size={15} className="flex-shrink-0 text-zinc-400 dark:text-zinc-500" />
           {selected ? dateToDisplay(selected) : placeholder}
         </span>
         {selected && !disabled && (
           <X
             size={14}
-            className="flex-shrink-0 text-zinc-300 hover:text-zinc-500"
+            className="flex-shrink-0 text-zinc-300 hover:text-zinc-500 dark:text-zinc-600 dark:hover:text-zinc-400"
             onClick={handleClear}
           />
         )}
@@ -98,7 +98,7 @@ export function DatePicker({
 
       {/* popover */}
       {open && (
-        <div className="absolute z-50 mt-1 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+        <div className="absolute left-0 top-full z-50 mt-1 rounded-xl border border-zinc-200 bg-white p-3 shadow-md dark:border-zinc-700 dark:bg-zinc-900">
           <DayPicker
             mode="single"
             selected={selected}
@@ -111,23 +111,23 @@ export function DatePicker({
               months: "flex flex-col gap-4",
               month: "flex flex-col gap-3",
               month_caption: "flex items-center justify-between px-1 py-1",
-              caption_label: "text-sm font-medium text-zinc-900 capitalize",
+              caption_label: "text-sm font-medium text-zinc-900 capitalize dark:text-zinc-50",
               nav: "flex items-center gap-1",
               button_previous:
-                "flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors",
+                "flex h-7 w-7 items-center justify-center rounded-md transition-colors text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 [&_svg]:stroke-current [&_svg]:fill-none",
               button_next:
-                "flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors",
+                "flex h-7 w-7 items-center justify-center rounded-md transition-colors text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 [&_svg]:stroke-current [&_svg]:fill-none",
               month_grid: "w-full border-collapse",
               weekdays: "flex",
-              weekday: "w-9 text-center text-[11px] font-normal text-zinc-400 pb-1.5",
+              weekday: "w-9 text-center text-[11px] font-normal text-zinc-400 pb-1.5 dark:text-zinc-600",
               weeks: "flex flex-col gap-0.5",
               week: "flex w-full",
               day: "relative flex h-9 w-9 items-center justify-center",
               day_button:
-                "flex h-8 w-8 items-center justify-center rounded-lg text-sm text-zinc-700 transition-colors hover:bg-zinc-100 focus:outline-none",
-              selected: "bg-zinc-900 rounded-lg [&>button]:text-white [&>button]:hover:bg-zinc-800",
+                "flex h-8 w-8 items-center justify-center rounded-lg text-sm text-zinc-700 transition-colors hover:bg-zinc-100 focus:outline-none dark:text-zinc-300 dark:hover:bg-zinc-800",
+              selected: "bg-zinc-900 rounded-lg [&>button]:text-white [&>button]:hover:bg-zinc-800 dark:bg-zinc-100 dark:[&>button]:text-zinc-900 dark:[&>button]:hover:bg-zinc-200",
               today: "[&>button]:font-semibold",
-              outside: "[&>button]:text-zinc-300",
+              outside: "[&>button]:text-zinc-300 dark:[&>button]:text-zinc-600",
               disabled: "opacity-30 cursor-not-allowed",
             }}
           />

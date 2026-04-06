@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { ColorSelect } from "@/components/ui/ColorSelect";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { getCategories } from "@/lib/transactions";
 import { getAccounts } from "@/lib/accounts";
+import { Building2, CreditCard as CreditCardIcon } from "lucide-react";
 import { getCreditCards, createInstallmentPlan } from "@/lib/credit-cards";
 import { createRecurringTransaction } from "@/lib/recurring-transactions";
 import type {
@@ -23,7 +25,7 @@ type PaymentMethod = "account" | "credit_card";
 
 interface FormState {
   description: string;
-  amountDisplay: string; // "R$ 1.500,00" — formatado para exibição
+  amountDisplay: string;
   categoryId: string;
   accountId: string;
   destinationAccountId: string;
@@ -71,13 +73,10 @@ function maskCurrency(raw: string): string {
 }
 
 function parseCurrency(display: string): number {
-  // "R$ 1.500,50" → 1500.50
   const digits = display.replace(/\D/g, "");
   if (!digits) return NaN;
   return parseInt(digits, 10) / 100;
 }
-
-// ─── formatação para edição ───────────────────────────────────────────────────
 
 function amountToDisplay(amount: number): string {
   return new Intl.NumberFormat("pt-BR", {
@@ -98,8 +97,7 @@ function validate(
   totalInstallments: string,
   isRecurring: boolean,
   frequency: RecurringFrequency | "",
-  accounts: AccountResponse[],
-  editing: TransactionResponse | null
+  isEditingCardExpense: boolean,
 ): FieldErrors {
   const errors: FieldErrors = {};
 
@@ -122,23 +120,12 @@ function validate(
         errors.totalInstallments = "Informe ao menos 2 parcelas.";
       }
     }
+  } else if (isEditingCardExpense) {
+    // edição de despesa de cartão: account é null na resposta, não exigir accountId
   } else {
     if (!values.accountId) {
       errors.accountId =
         tab === "TRANSFER" ? "Selecione a conta de origem." : "Selecione a conta.";
-    }
-
-    // validação de saldo: só para EXPENSE em conta corrente, não recorrente, e somente se o saldo atual for conhecido
-    if (tab === "EXPENSE" && !isRecurring && values.accountId && !isNaN(amount) && amount > 0) {
-      const account = accounts.find((a) => a.id === values.accountId);
-      if (account && account.currentBalance !== null) {
-        const originalAmount = editing && editing.type === "EXPENSE" ? editing.amount : 0;
-        const balanceAfter = account.currentBalance + originalAmount - amount;
-        if (balanceAfter < 0) {
-          const formatted = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(balanceAfter);
-          errors.amount = `Saldo insuficiente. Após esta despesa o saldo seria ${formatted} em "${account.name}".`;
-        }
-      }
     }
   }
 
@@ -212,7 +199,6 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
     if (editing) return;
     setTab(next);
     setFieldErrors({});
-    // cartão e recorrência só se aplicam a despesas/receitas (não transferência)
     if (next === "TRANSFER") {
       setPaymentMethod("account");
       setCreditCardId("");
@@ -221,7 +207,6 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
       setIsRecurring(false);
       setFrequency("");
     }
-    // cartão só para despesas
     if (next !== "EXPENSE") {
       setPaymentMethod("account");
       setCreditCardId("");
@@ -253,14 +238,9 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
     if (fieldErrors.amount) setFieldErrors((prev) => ({ ...prev, amount: undefined }));
   }
 
-  function handleBlur(field: keyof FieldErrors) {
-    const errs = validate(values, tab, paymentMethod, creditCardId, isInstallment, totalInstallments, isRecurring, frequency, accounts, editing);
-    if (errs[field]) setFieldErrors((prev) => ({ ...prev, [field]: errs[field] }));
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const errs = validate(values, tab, paymentMethod, creditCardId, isInstallment, totalInstallments, isRecurring, frequency, accounts, editing);
+    const errs = validate(values, tab, paymentMethod, creditCardId, isInstallment, totalInstallments, isRecurring, frequency, isEditingCardExpense);
     if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
 
     const amount = parseCurrency(values.amountDisplay);
@@ -298,8 +278,6 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
         return;
       }
 
-      // Cenário: cartão à vista (fix #1 — creditCardId separado de accountId)
-      // Cenário: conta corrente / receita / transferência
       const payload: TransactionRequest =
         tab === "TRANSFER"
           ? {
@@ -310,13 +288,21 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
               destinationAccountId: values.destinationAccountId,
               transactionDate: values.transactionDate,
             }
-          : tab === "EXPENSE" && paymentMethod === "credit_card"
+          : tab === "EXPENSE" && paymentMethod === "credit_card" && !isEditingCardExpense
           ? {
               type: "EXPENSE",
               description: values.description.trim(),
               amount,
               categoryId: values.categoryId,
               creditCardId,
+              transactionDate: values.transactionDate,
+            }
+          : isEditingCardExpense
+          ? {
+              type: "EXPENSE",
+              description: values.description.trim(),
+              amount,
+              categoryId: values.categoryId,
               transactionDate: values.transactionDate,
             }
           : {
@@ -329,7 +315,6 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
             };
 
       await onSave(payload);
-      // evento disparado após sucesso (o pai fecha o SlideOver)
       window.dispatchEvent(new CustomEvent("transaction-updated"));
     } catch {
       // erro tratado no pai
@@ -338,34 +323,33 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
     }
   }
 
-  const errs = validate(values, tab, paymentMethod, creditCardId, isInstallment, totalInstallments, isRecurring, frequency, accounts, editing);
-  const isValid = Object.keys(errs).length === 0;
+  // despesa de cartão de crédito na edição: account é null pois a transação pertence a um cartão
+  const isEditingCardExpense = !!editing && editing.type === "EXPENSE" && editing.account === null;
 
-  const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
-  const creditCardOptions = creditCards.map((c) => ({ value: c.id, label: c.name }));
+  const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name, color: a.color }));
+  const creditCardOptions = creditCards.map((c) => ({ value: c.id, label: c.name, color: c.color }));
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
   const frequencyOptions = FREQUENCY_OPTIONS.map((f) => ({ value: f.value, label: f.label }));
 
-  // cartão parcelado e recorrentes não são combináveis com edição
   const showRecurringOption = tab !== "TRANSFER" && !editing;
   const showCardToggle = tab === "EXPENSE" && !isRecurring && !editing;
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex h-full flex-col">
-      {/* área de scroll com os inputs */}
       <div className="flex flex-1 flex-col gap-5 overflow-y-auto pb-4">
-        {/* abas */}
-        <div className="flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5">
+
+        {/* 1. TIPO — controle primário */}
+        <div className="mb-2 flex rounded-xl border border-zinc-200 bg-zinc-100 p-1 dark:border-zinc-700 dark:bg-zinc-800">
           {TABS.map(({ key, label }) => (
             <button
               key={key}
               type="button"
               onClick={() => handleTabChange(key)}
               disabled={!!editing}
-              className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 rounded-lg py-2.5 text-sm transition-all ${
                 tab === key
-                  ? "bg-white text-zinc-900"
-                  : "text-zinc-500 hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  ? "bg-white font-semibold text-zinc-900 shadow-sm dark:bg-zinc-600 dark:text-zinc-50"
+                  : "font-medium text-zinc-400 hover:text-zinc-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-500 dark:hover:text-zinc-300"
               }`}
             >
               {label}
@@ -373,104 +357,61 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
           ))}
         </div>
 
-        <Input
-          label="Descrição"
-          placeholder="Ex: Supermercado, Salário"
-          value={values.description}
-          onChange={(e) => handleChange("description", e.target.value)}
-          onBlur={() => handleBlur("description")}
-          error={fieldErrors.description}
-        />
+        {/* 2. ORIGEM DO DINHEIRO */}
 
-        {/* valor com máscara de moeda */}
-        <Input
-          label="Valor"
-          type="text"
-          inputMode="numeric"
-          placeholder="R$ 0,00"
-          value={values.amountDisplay}
-          onChange={(e) => handleAmountChange(e.target.value)}
-          onBlur={() => handleBlur("amount")}
-          error={fieldErrors.amount}
-        />
-
-        <DatePicker
-          label="Data"
-          value={values.transactionDate}
-          onChange={(iso) => {
-            handleChange("transactionDate", iso ?? "");
-            handleBlur("transactionDate");
-          }}
-          error={fieldErrors.transactionDate}
-        />
-
-        {tab !== "TRANSFER" && (
-          <div className="flex flex-col gap-1.5">
-            <Select
-              label="Categoria"
-              options={loadingCats ? [] : categoryOptions}
-              value={values.categoryId}
-              onChange={(e) => handleChange("categoryId", e.target.value)}
-              onBlur={() => handleBlur("categoryId")}
-              error={fieldErrors.categoryId}
-              disabled={loadingCats || categories.length === 0}
-            />
-            {!loadingCats && categories.length === 0 && (
-              <p className="text-xs text-zinc-400">Nenhuma categoria cadastrada para este tipo.</p>
-            )}
-          </div>
-        )}
-
-        {/* toggle forma de pagamento — só para despesas não-recorrentes */}
+        {/* radio forma de pagamento — só para despesas não-recorrentes */}
         {showCardToggle && (
           <div className="flex flex-col gap-3">
-            <div className="flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5">
-              <button
-                type="button"
-                onClick={() => handlePaymentMethodChange("account")}
-                className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                  paymentMethod === "account"
-                    ? "bg-white text-zinc-900"
-                    : "text-zinc-400 hover:text-zinc-600"
-                }`}
-              >
-                Conta corrente
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePaymentMethodChange("credit_card")}
-                className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                  paymentMethod === "credit_card"
-                    ? "bg-white text-zinc-900"
-                    : "text-zinc-400 hover:text-zinc-600"
-                }`}
-              >
-                Cartão de crédito
-              </button>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm text-zinc-500 dark:text-zinc-400">Forma de pagamento</span>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => handlePaymentMethodChange("account")}
+                  className={`flex flex-1 items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm transition-colors ${
+                    paymentMethod === "account"
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                      : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 hover:text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  <Building2 size={15} className="flex-shrink-0" />
+                  Conta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePaymentMethodChange("credit_card")}
+                  className={`flex flex-1 items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm transition-colors ${
+                    paymentMethod === "credit_card"
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                      : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 hover:text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  <CreditCardIcon size={15} className="flex-shrink-0" />
+                  Cartão
+                </button>
+              </div>
             </div>
 
             {paymentMethod === "account" && (
-              <Select
+              <ColorSelect
                 label="Conta"
                 options={accountOptions}
                 value={values.accountId}
-                onChange={(e) => handleChange("accountId", e.target.value)}
-                onBlur={() => handleBlur("accountId")}
+                onChange={(v) => handleChange("accountId", v)}
                 error={fieldErrors.accountId}
               />
             )}
 
             {paymentMethod === "credit_card" && (
               <div className="flex flex-col gap-3">
-                <Select
+                <ColorSelect
                   label="Cartão"
                   options={creditCardOptions}
                   value={creditCardId}
-                  onChange={(e) => {
-                    setCreditCardId(e.target.value);
+                  onChange={(v) => {
+                    setCreditCardId(v);
                     if (fieldErrors.creditCardId) setFieldErrors((prev) => ({ ...prev, creditCardId: undefined }));
                   }}
-                  onBlur={() => handleBlur("creditCardId")}
                   error={fieldErrors.creditCardId}
                 />
 
@@ -485,9 +426,9 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
                         setFieldErrors((prev) => ({ ...prev, totalInstallments: undefined }));
                       }
                     }}
-                    className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
+                    className="h-4 w-4 rounded border-zinc-300 accent-zinc-900 dark:accent-zinc-100 dark:border-zinc-600"
                   />
-                  <span className="text-sm text-zinc-500">Compra parcelada</span>
+                  <span className="text-sm text-zinc-500 dark:text-zinc-400">Compra parcelada</span>
                 </label>
 
                 {isInstallment && (
@@ -502,7 +443,6 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
                       setTotalInstallments(e.target.value);
                       if (fieldErrors.totalInstallments) setFieldErrors((prev) => ({ ...prev, totalInstallments: undefined }));
                     }}
-                    onBlur={() => handleBlur("totalInstallments")}
                     error={fieldErrors.totalInstallments}
                   />
                 )}
@@ -511,14 +451,20 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
           </div>
         )}
 
+        {/* aviso de despesa de cartão em edição */}
+        {isEditingCardExpense && (
+          <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+            Esta despesa pertence a um cartão de crédito. O cartão não pode ser alterado na edição.
+          </p>
+        )}
+
         {/* conta para receita */}
         {tab === "INCOME" && (
-          <Select
+          <ColorSelect
             label="Conta"
             options={accountOptions}
             value={values.accountId}
-            onChange={(e) => handleChange("accountId", e.target.value)}
-            onBlur={() => handleBlur("accountId")}
+            onChange={(v) => handleChange("accountId", v)}
             error={fieldErrors.accountId}
           />
         )}
@@ -526,38 +472,80 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
         {/* contas para transferência */}
         {tab === "TRANSFER" && (
           <>
-            <Select
+            <ColorSelect
               label="Conta de origem"
               options={accountOptions}
               value={values.accountId}
-              onChange={(e) => handleChange("accountId", e.target.value)}
-              onBlur={() => handleBlur("accountId")}
+              onChange={(v) => handleChange("accountId", v)}
               error={fieldErrors.accountId}
             />
-            <Select
+            <ColorSelect
               label="Conta de destino"
               options={accountOptions.filter((o) => o.value !== values.accountId)}
               value={values.destinationAccountId}
-              onChange={(e) => handleChange("destinationAccountId", e.target.value)}
-              onBlur={() => handleBlur("destinationAccountId")}
+              onChange={(v) => handleChange("destinationAccountId", v)}
               error={fieldErrors.destinationAccountId}
             />
           </>
         )}
 
-        {/* conta para despesa recorrente (quando cartão não selecionado) */}
+        {/* conta para despesa recorrente */}
         {tab === "EXPENSE" && isRecurring && (
-          <Select
+          <ColorSelect
             label="Conta"
             options={accountOptions}
             value={values.accountId}
-            onChange={(e) => handleChange("accountId", e.target.value)}
-            onBlur={() => handleBlur("accountId")}
+            onChange={(v) => handleChange("accountId", v)}
             error={fieldErrors.accountId}
           />
         )}
 
-        {/* transação recorrente */}
+        {/* 3. VALOR */}
+        <Input
+          label="Valor"
+          type="text"
+          inputMode="numeric"
+          placeholder="R$ 0,00"
+          value={values.amountDisplay}
+          onChange={(e) => handleAmountChange(e.target.value)}
+          error={fieldErrors.amount}
+        />
+
+        {/* 4. DATA */}
+        <DatePicker
+          label="Data"
+          value={values.transactionDate}
+          onChange={(iso) => handleChange("transactionDate", iso ?? "")}
+          error={fieldErrors.transactionDate}
+        />
+
+        {/* 5. CATEGORIA */}
+        {tab !== "TRANSFER" && (
+          <div className="flex flex-col gap-1.5">
+            <Select
+              label="Categoria"
+              options={loadingCats ? [] : categoryOptions}
+              value={values.categoryId}
+              onChange={(e) => handleChange("categoryId", e.target.value)}
+              error={fieldErrors.categoryId}
+              disabled={loadingCats || categories.length === 0}
+            />
+            {!loadingCats && categories.length === 0 && (
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">Nenhuma categoria cadastrada para este tipo.</p>
+            )}
+          </div>
+        )}
+
+        {/* 6. DESCRIÇÃO */}
+        <Input
+          label="Descrição"
+          placeholder="Ex: Supermercado, Salário"
+          value={values.description}
+          onChange={(e) => handleChange("description", e.target.value)}
+          error={fieldErrors.description}
+        />
+
+        {/* 7. RECORRÊNCIA */}
         {showRecurringOption && (
           <div className="flex flex-col gap-3">
             <label className="flex cursor-pointer items-center gap-2.5">
@@ -570,7 +558,6 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
                     setFrequency("");
                     setFieldErrors((prev) => ({ ...prev, frequency: undefined }));
                   } else {
-                    // ao marcar recorrente, volta para conta corrente
                     setPaymentMethod("account");
                     setCreditCardId("");
                     setIsInstallment(false);
@@ -579,7 +566,7 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
                 }}
                 className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
               />
-              <span className="text-sm text-zinc-500">É uma transação fixa/recorrente</span>
+              <span className="text-sm text-zinc-500 dark:text-zinc-400">É uma transação fixa/recorrente</span>
             </label>
 
             {isRecurring && (
@@ -591,7 +578,6 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
                   setFrequency(e.target.value as RecurringFrequency);
                   if (fieldErrors.frequency) setFieldErrors((prev) => ({ ...prev, frequency: undefined }));
                 }}
-                onBlur={() => handleBlur("frequency")}
                 error={fieldErrors.frequency}
               />
             )}
@@ -600,18 +586,18 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
       </div>
 
       {/* botões — fixos no rodapé */}
-      <div className="sticky bottom-0 mt-auto flex gap-3 border-t border-zinc-100 bg-white pt-4">
+      <div className="sticky bottom-0 mt-auto flex gap-3 border-t border-zinc-100 bg-white pt-4 dark:border-zinc-800 dark:bg-zinc-950">
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100"
+          className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
         >
           Cancelar
         </button>
         <button
           type="submit"
-          disabled={!isValid || saving}
-          className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+          disabled={saving}
+          className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           {saving ? "Salvando..." : editing ? "Salvar alterações" : "Salvar"}
         </button>

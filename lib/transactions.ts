@@ -15,9 +15,10 @@ export interface TransactionFilters {
 
 export async function getTransactions(
   page = 0,
-  filters: TransactionFilters = {}
+  filters: TransactionFilters = {},
+  size = 200
 ): Promise<PageResponse<TransactionResponse>> {
-  const params: Record<string, string | number> = { page };
+  const params: Record<string, string | number> = { page, size };
   if (filters.accountId) params.accountId = filters.accountId;
   if (filters.type) params.type = filters.type;
   if (filters.startDate) params.startDate = filters.startDate;

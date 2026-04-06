@@ -142,8 +142,8 @@ export default function ContasPage() {
         {/* cabeçalho */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-medium text-zinc-900">Contas</h1>
-            <p className="mt-0.5 text-sm text-zinc-500">
+            <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Contas</h1>
+            <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
               {accounts === null
                 ? ""
                 : `${accounts.length} conta${accounts.length !== 1 ? "s" : ""} cadastrada${accounts.length !== 1 ? "s" : ""}`}
@@ -151,7 +151,7 @@ export default function ContasPage() {
           </div>
           <button
             onClick={openNew}
-            className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+            className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             <Plus size={15} />
             Nova conta

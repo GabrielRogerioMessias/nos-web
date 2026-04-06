@@ -139,7 +139,8 @@ export interface InvoiceResponse {
 }
 
 export interface InvoicePaymentRequest {
-  accountId: string;
+  accountId?: string;
+  vaultId?: string;
   month: string;
   amount: number;
   paymentDate: string;

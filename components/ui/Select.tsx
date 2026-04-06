@@ -11,13 +11,15 @@ export function Select({ label, error, id, options, ...props }: SelectProps) {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={selectId} className="text-sm text-zinc-600">
+      <label htmlFor={selectId} className="text-sm text-zinc-600 dark:text-zinc-400">
         {label}
       </label>
       <select
         id={selectId}
-        className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 ${
-          error ? "border-red-300 bg-red-50/40" : "border-zinc-200 bg-white"
+        className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:text-zinc-50 dark:focus:border-zinc-500 dark:[color-scheme:dark] ${
+          error
+            ? "border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40"
+            : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
         }`}
         {...props}
       >

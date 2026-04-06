@@ -21,11 +21,43 @@ const EMPTY_FILTERS: TransactionFilters = {};
 
 let toastIdCounter = 0;
 
+function currentMonthISO() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function prevMonth(month: string) {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(y, m - 2, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function nextMonth(month: string) {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(y, m, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(month: string) {
+  const [y, m] = month.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+}
+
+function monthToDateRange(month: string): { startDate: string; endDate: string } {
+  const [y, m] = month.split("-").map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  return {
+    startDate: `${month}-01`,
+    endDate: `${month}-${String(lastDay).padStart(2, "0")}`,
+  };
+}
+
 export default function ExtratoPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromDash = searchParams.get("from") === "dash";
 
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthISO());
   const [transactions, setTransactions] = useState<TransactionResponse[] | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(0);
@@ -51,31 +83,35 @@ export default function ExtratoPage() {
     });
   }, []);
 
-  const loadTransactions = useCallback(async (p: number, f: TransactionFilters) => {
+  const loadTransactions = useCallback(async (p: number, f: TransactionFilters, month: string) => {
     setTransactions(null);
     try {
       const result = await getTransactions(p, f);
-      const sorted = [...result.content].sort(
+      const { startDate, endDate } = monthToDateRange(month);
+      const filtered = result.content.filter((tx) => {
+        return tx.transactionDate >= startDate && tx.transactionDate <= endDate;
+      });
+      const sorted = [...filtered].sort(
         (a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime()
       );
       setTransactions(sorted);
-      setTotalPages(result.totalPages);
+      setTotalPages(result.totalPages ?? 1);
     } catch {
       addToast("Não foi possível carregar as transações.", "error");
       setTransactions([]);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    loadTransactions(page, filters);
-  }, [page, filters, loadTransactions]);
+    loadTransactions(page, filters, selectedMonth);
+  }, [page, filters, selectedMonth, loadTransactions]);
 
   // recarrega silenciosamente após qualquer transação salva
   useEffect(() => {
-    function onUpdated() { loadTransactions(page, filters); }
+    function onUpdated() { loadTransactions(page, filters, selectedMonth); }
     window.addEventListener("transaction-updated", onUpdated);
     return () => window.removeEventListener("transaction-updated", onUpdated);
-  }, [page, filters, loadTransactions]);
+  }, [page, filters, selectedMonth, loadTransactions]);
 
   function handleFilterChange(next: TransactionFilters) {
     setFilters(next);
@@ -84,6 +120,16 @@ export default function ExtratoPage() {
 
   function handleClearFilters() {
     setFilters(EMPTY_FILTERS);
+    setPage(0);
+  }
+
+  function handlePrevMonth() {
+    setSelectedMonth((m) => prevMonth(m));
+    setPage(0);
+  }
+
+  function handleNextMonth() {
+    setSelectedMonth((m) => nextMonth(m));
     setPage(0);
   }
 
@@ -112,7 +158,7 @@ export default function ExtratoPage() {
         addToast("Transação registrada com sucesso.");
       }
       closeSlide();
-      loadTransactions(page, filters);
+      loadTransactions(page, filters, selectedMonth);
     } catch {
       addToast("Erro ao salvar a transação. Verifique os dados e tente novamente.", "error");
       throw new Error("api_error");
@@ -128,29 +174,50 @@ export default function ExtratoPage() {
             {fromDash && (
               <button
                 onClick={() => router.push("/")}
-                className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+                className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                 aria-label="Voltar ao dashboard"
               >
                 <ArrowLeft size={16} />
               </button>
             )}
             <div>
-              <h1 className="text-xl font-medium text-zinc-900">Extrato</h1>
+              <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Extrato</h1>
               {transactions !== null && (
-                <p className="mt-0.5 text-sm text-zinc-500">
+                <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
                   {transactions.length === 0
-                    ? "Nenhuma transação"
-                    : `${transactions.length} transaç${transactions.length !== 1 ? "ões" : "ão"} nesta página`}
+                    ? "Nenhuma transação neste mês"
+                    : `${transactions.length} transaç${transactions.length !== 1 ? "ões" : "ão"} neste mês`}
                 </p>
               )}
             </div>
           </div>
           <button
             onClick={openNew}
-            className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+            className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             <Plus size={15} />
             Nova transação
+          </button>
+        </div>
+
+        {/* seletor de mês */}
+        <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-950">
+          <button
+            onClick={handlePrevMonth}
+            className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            aria-label="Mês anterior"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="text-sm font-medium capitalize text-zinc-700 dark:text-zinc-300">
+            {monthLabel(selectedMonth)}
+          </span>
+          <button
+            onClick={handleNextMonth}
+            className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            aria-label="Próximo mês"
+          >
+            <ChevronRight size={16} />
           </button>
         </div>
 
@@ -178,7 +245,7 @@ export default function ExtratoPage() {
             onEdit={openEdit}
             onDeleteSuccess={(message) => {
               addToast(message);
-              loadTransactions(page, filters);
+              loadTransactions(page, filters, selectedMonth);
             }}
           />
         )}
@@ -189,17 +256,17 @@ export default function ExtratoPage() {
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 disabled:opacity-30"
+              className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-800"
             >
               <ChevronLeft size={16} />
             </button>
-            <span className="text-sm text-zinc-500">
+            <span className="text-sm text-zinc-500 dark:text-zinc-400">
               {page + 1} de {totalPages}
             </span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page === totalPages - 1}
-              className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 disabled:opacity-30"
+              className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-800"
             >
               <ChevronRight size={16} />
             </button>
@@ -218,7 +285,7 @@ export default function ExtratoPage() {
           onSuccess={() => {
             closeSlide();
             addToast("Registrado com sucesso.");
-            loadTransactions(page, filters);
+            loadTransactions(page, filters, selectedMonth);
           }}
           onCancel={closeSlide}
         />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { ArrowRightLeft, Pencil, Trash2 } from "lucide-react";
 import { DeleteTransactionModal } from "@/components/transactions/DeleteTransactionModal";
 import type { TransactionResponse } from "@/types/dashboard";
 
@@ -22,17 +22,17 @@ function formatDate(dateStr: string) {
 
 export function TransactionListSkeleton() {
   return (
-    <div className="flex flex-col divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
+    <div className="flex flex-col divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-center justify-between px-5 py-4">
-          <div className="flex items-center gap-4">
-            <div className="h-3 w-12 animate-pulse rounded bg-zinc-100" />
-            <div>
-              <div className="h-3.5 w-36 animate-pulse rounded bg-zinc-200" />
-              <div className="mt-1.5 h-3 w-20 animate-pulse rounded bg-zinc-100" />
-            </div>
+        <div key={i} className="flex items-center gap-3 px-4 py-3.5 sm:px-5 sm:py-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <div className="h-3.5 w-36 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
+            <div className="h-3 w-24 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
           </div>
-          <div className="h-4 w-20 animate-pulse rounded bg-zinc-200" />
+          <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
+            <div className="h-3.5 w-20 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
+            <div className="h-3 w-12 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+          </div>
         </div>
       ))}
     </div>
@@ -51,47 +51,55 @@ function TransactionRow({ tx, onEdit, onDeleteRequest }: TransactionRowProps) {
   const isExpense = tx.type === "EXPENSE";
   const isTransfer = tx.type === "TRANSFER";
 
-  return (
-    <div className="flex items-center justify-between gap-4 px-5 py-4">
-      {/* data */}
-      <span className="w-16 flex-shrink-0 text-xs tabular-nums text-zinc-400">
-        {formatDate(tx.transactionDate)}
-      </span>
+  const amountColor = isExpense
+    ? "text-zinc-500 dark:text-zinc-400"
+    : isTransfer
+    ? "text-zinc-400 dark:text-zinc-500"
+    : "text-zinc-900 dark:text-zinc-50";
 
-      {/* descrição + conta */}
+  return (
+    <div className="flex items-center gap-3 px-4 py-3.5 sm:px-5 sm:py-4">
+      {/* descrição + meta — cresce e trunca */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm text-zinc-900">{tx.description}</span>
-        <span className="truncate text-xs text-zinc-400">
-          {tx.category?.name ?? "—"}
+        <span className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
+          {tx.description}
+        </span>
+        <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-zinc-400 dark:text-zinc-500">
+          {isTransfer && !tx.category ? (
+            <>
+              <ArrowRightLeft size={11} className="flex-shrink-0 text-zinc-300 dark:text-zinc-600" />
+              <span className="text-zinc-300 dark:text-zinc-600">Movimentação</span>
+            </>
+          ) : (
+            tx.category?.name ?? "—"
+          )}
           {tx.account ? ` · ${tx.account.name}` : ""}
         </span>
       </div>
 
-      {/* valor + ações */}
-      <div className="flex flex-shrink-0 items-center gap-3">
-        <span
-          className={`text-sm tabular-nums ${
-            isExpense ? "text-zinc-500" : isTransfer ? "text-zinc-400" : "text-zinc-900"
-          }`}
-        >
+      {/* valor + data + ações — nunca quebra linha */}
+      <div className="flex flex-shrink-0 flex-col items-end gap-0.5">
+        <span className={`whitespace-nowrap text-sm font-semibold tabular-nums ${amountColor}`}>
           {isExpense ? "– " : isTransfer ? "" : "+ "}
           {formatCurrency(tx.amount)}
         </span>
-
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
+          <span className="text-xs tabular-nums text-zinc-400 dark:text-zinc-500">
+            {formatDate(tx.transactionDate)}
+          </span>
           <button
             onClick={() => onEdit(tx)}
-            className="rounded p-1 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500"
+            className="rounded p-1 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500 dark:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-400"
             aria-label="Editar transação"
           >
-            <Pencil size={14} />
+            <Pencil size={13} />
           </button>
           <button
             onClick={() => onDeleteRequest(tx)}
-            className="rounded p-1 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500"
+            className="rounded p-1 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500 dark:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-400"
             aria-label="Excluir transação"
           >
-            <Trash2 size={14} />
+            <Trash2 size={13} />
           </button>
         </div>
       </div>
@@ -112,16 +120,16 @@ export function TransactionList({ transactions, onEdit, onDeleteSuccess }: Trans
 
   if (transactions.length === 0) {
     return (
-      <div className="rounded-xl border border-zinc-200 bg-white px-5 py-12 text-center">
-        <p className="text-sm text-zinc-400">Nenhuma transação encontrada.</p>
-        <p className="mt-1 text-xs text-zinc-300">Clique em "Nova transação" para começar.</p>
+      <div className="rounded-xl border border-zinc-200 bg-white px-5 py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
+        <p className="text-sm text-zinc-400 dark:text-zinc-500">Nenhuma transação encontrada.</p>
+        <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-600">Clique em "Nova transação" para começar.</p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="flex flex-col divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
+      <div className="flex flex-col divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
         {transactions.map((tx) => (
           <TransactionRow
             key={tx.id}

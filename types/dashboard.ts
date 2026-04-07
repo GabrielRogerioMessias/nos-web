@@ -66,6 +66,8 @@ export interface TransactionResponse {
   transactionDate: string;
   category: CategoryResponse;
   account: { id: string; name: string } | null;
+  creditCard?: { id: string; name: string } | null;
+  invoicePaid?: boolean;
   installmentPlanId?: string;
   recurringTransactionId?: string;
 }
@@ -135,6 +137,7 @@ export interface InvoiceResponse {
   closingDate: string;
   dueDate: string;
   totalAmount: number;
+  paid: boolean;
   transactions: InvoiceTransaction[];
 }
 

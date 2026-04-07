@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ChevronRight, Pencil, Trash2, MoreHorizontal } from "lucide-react";
 import type { CreditCardResponse, InvoiceResponse } from "@/types/dashboard";
+import { InvoicePaymentModal } from "@/components/credit-cards/InvoicePaymentModal";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -179,11 +180,14 @@ interface CreditCardItemProps {
   invoiceLoading: boolean;
   onEdit: (card: CreditCardResponse) => void;
   onDelete: (id: string) => Promise<void>;
+  onPaymentSuccess: () => void;
+  onPaymentError: (msg: string) => void;
 }
 
-function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete }: CreditCardItemProps) {
+function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete, onPaymentSuccess, onPaymentError }: CreditCardItemProps) {
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [payingInvoice, setPayingInvoice] = useState(false);
 
   async function handleConfirmDelete() {
     setDeleting(true);
@@ -201,9 +205,32 @@ function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete }: Cre
   const disponivel = Math.max(0, limite - fatura);
   const pct = limite > 0 ? (fatura / limite) * 100 : 0;
   const isOver = pct > 100;
-  const statusLabel = !card.active ? "Inativo" : isOver ? "Estourado" : fatura === 0 ? "Sem fatura" : "Em uso";
+
+  // fatura paga
+  const isInvoicePaid = invoice?.paid ?? false;
+
+  // fatura fechada: hoje >= closingDate, há valor e não foi paga
+  const isClosed = !!invoice?.closingDate && fatura > 0 && !isInvoicePaid &&
+    new Date().toISOString().slice(0, 10) >= invoice.closingDate;
+
+  const statusLabel = !card.active
+    ? "Inativo"
+    : isInvoicePaid
+    ? "Paga"
+    : isClosed
+    ? "Fatura fechada"
+    : isOver
+    ? "Estourado"
+    : fatura === 0
+    ? "Sem fatura"
+    : "Em uso";
+
   const statusClass = !card.active
     ? "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500"
+    : isInvoicePaid
+    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+    : isClosed
+    ? "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
     : isOver
     ? "bg-red-500/10 text-red-500"
     : fatura === 0
@@ -241,8 +268,12 @@ function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete }: Cre
 
         {/* ── fatura: herói ── */}
         <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-            Fatura atual
+          <p className={`text-xs font-medium uppercase tracking-widest ${
+            isClosed
+              ? "text-amber-600 dark:text-amber-500"
+              : "text-zinc-400 dark:text-zinc-500"
+          }`}>
+            {isClosed ? "Fatura fechada" : "Fatura atual"}
           </p>
           {invoiceLoading ? (
             <div className="mt-2 h-9 w-36 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
@@ -297,6 +328,24 @@ function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete }: Cre
         </span>
       </div>
 
+      {/* ── rodapé de ação/status da fatura ── */}
+      {!confirming && (isInvoicePaid || isClosed) && (
+        <div className="border-t border-zinc-100 px-6 pb-4 pt-4 dark:border-zinc-800">
+          {isInvoicePaid ? (
+            <div className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 py-2 text-xs font-medium text-emerald-600 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:text-emerald-400">
+              Fatura paga
+            </div>
+          ) : (
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPayingInvoice(true); }}
+              className="w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              Pagar fatura
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ── confirmação de exclusão ── */}
       {confirming && (
         <div className="border-t border-zinc-100 px-6 pb-5 pt-4 dark:border-zinc-800">
@@ -307,6 +356,17 @@ function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete }: Cre
             onCancel={() => setConfirming(false)}
           />
         </div>
+      )}
+
+      {/* ── modal de pagamento ── */}
+      {payingInvoice && invoice && (
+        <InvoicePaymentModal
+          card={card}
+          invoice={invoice}
+          onClose={() => setPayingInvoice(false)}
+          onSuccess={() => { setPayingInvoice(false); onPaymentSuccess(); }}
+          onError={(msg) => { setPayingInvoice(false); onPaymentError(msg); }}
+        />
       )}
     </div>
   );
@@ -324,9 +384,11 @@ interface CreditCardListProps {
   items: CardWithInvoice[];
   onEdit: (card: CreditCardResponse) => void;
   onDelete: (id: string) => Promise<void>;
+  onPaymentSuccess: () => void;
+  onPaymentError: (msg: string) => void;
 }
 
-export function CreditCardList({ items, onEdit, onDelete }: CreditCardListProps) {
+export function CreditCardList({ items, onEdit, onDelete, onPaymentSuccess, onPaymentError }: CreditCardListProps) {
   if (items.length === 0) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-16 text-center dark:border-zinc-800 dark:bg-zinc-950">
@@ -348,6 +410,8 @@ export function CreditCardList({ items, onEdit, onDelete }: CreditCardListProps)
           invoiceLoading={invoiceLoading}
           onEdit={onEdit}
           onDelete={onDelete}
+          onPaymentSuccess={onPaymentSuccess}
+          onPaymentError={onPaymentError}
         />
       ))}
     </div>

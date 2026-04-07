@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { MoreHorizontal, Pencil, Power, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Power, Trash2, Archive } from "lucide-react";
 import type { AccountResponse } from "@/types/dashboard";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -49,16 +49,16 @@ export function AccountListSkeleton() {
   );
 }
 
-// ─── menu de ações ─────────────────────────────────────────────────────────────
+// ─── menu de ações — conta ATIVA ──────────────────────────────────────────────
 
-interface ActionsMenuProps {
+interface ActiveActionsMenuProps {
   account: AccountResponse;
   onEdit: () => void;
   onToggle: () => void;
   onDelete: () => void;
 }
 
-function ActionsMenu({ account, onEdit, onToggle, onDelete }: ActionsMenuProps) {
+function ActiveActionsMenu({ account, onEdit, onToggle, onDelete }: ActiveActionsMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -93,8 +93,60 @@ function ActionsMenu({ account, onEdit, onToggle, onDelete }: ActionsMenuProps) 
             onClick={() => { setOpen(false); onToggle(); }}
             className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
+            <Archive size={13} />
+            Arquivar conta
+          </button>
+          <div className="border-t border-zinc-100 dark:border-zinc-800" />
+          <button
+            onClick={() => { setOpen(false); onDelete(); }}
+            className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
+          >
+            <Trash2 size={13} />
+            Excluir
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── menu de ações — conta ARQUIVADA ─────────────────────────────────────────
+
+interface ArchivedActionsMenuProps {
+  onToggle: () => void;
+  onDelete: () => void;
+}
+
+function ArchivedActionsMenu({ onToggle, onDelete }: ArchivedActionsMenuProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative flex-shrink-0">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+        aria-label="Ações"
+      >
+        <MoreHorizontal size={15} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-8 z-10 min-w-[152px] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+          <button
+            onClick={() => { setOpen(false); onToggle(); }}
+            className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
             <Power size={13} />
-            {account.active ? "Desativar" : "Ativar"}
+            Reativar conta
           </button>
           <div className="border-t border-zinc-100 dark:border-zinc-800" />
           <button
@@ -123,10 +175,14 @@ function AccountCard({ account, onEdit, onToggle, onDelete }: AccountCardProps) 
   const accentColor = account.color ?? "#a1a1aa";
   const balance = Number(account.currentBalance ?? account.initialBalance ?? 0);
   const typeLabel = TYPE_LABEL[account.type] ?? account.type;
+  const isArchived = !account.active;
+
+  // extrato filtrado por conta: /extrato?accountId=xxx
+  const extratoHref = `/extrato?accountId=${account.id}`;
 
   return (
     <div
-      className={`flex flex-col rounded-2xl border border-zinc-200 bg-white transition-colors dark:border-zinc-800 dark:bg-zinc-950${!account.active ? " opacity-50" : ""}`}
+      className={`flex flex-col rounded-2xl border border-zinc-200 bg-white transition-colors dark:border-zinc-800 dark:bg-zinc-950${isArchived ? " opacity-75" : ""}`}
     >
       {/* corpo */}
       <div className="flex flex-col gap-5 p-6">
@@ -134,7 +190,7 @@ function AccountCard({ account, onEdit, onToggle, onDelete }: AccountCardProps) 
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-base font-bold"
+              className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-base font-bold${isArchived ? " grayscale" : ""}`}
               style={{ backgroundColor: accentColor + "22", color: accentColor }}
             >
               {account.name.charAt(0).toUpperCase()}
@@ -149,23 +205,29 @@ function AccountCard({ account, onEdit, onToggle, onDelete }: AccountCardProps) 
             </div>
           </div>
 
-          <ActionsMenu
-            account={account}
-            onEdit={onEdit}
-            onToggle={onToggle}
-            onDelete={onDelete}
-          />
+          {isArchived ? (
+            <ArchivedActionsMenu onToggle={onToggle} onDelete={onDelete} />
+          ) : (
+            <ActiveActionsMenu
+              account={account}
+              onEdit={onEdit}
+              onToggle={onToggle}
+              onDelete={onDelete}
+            />
+          )}
         </div>
 
         {/* saldo */}
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-            Saldo atual
+            Saldo final
           </p>
           <p
             className={`mt-1 text-3xl font-bold tracking-tight${
               balance < 0
                 ? " text-red-500"
+                : isArchived
+                ? " text-zinc-400 dark:text-zinc-500"
                 : " text-zinc-900 dark:text-white"
             }`}
           >
@@ -180,15 +242,15 @@ function AccountCard({ account, onEdit, onToggle, onDelete }: AccountCardProps) 
           <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
             {typeLabel}
           </span>
-          {!account.active && (
+          {isArchived && (
             <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
-              Inativa
+              Arquivada
             </span>
           )}
         </div>
 
         <Link
-          href="/extrato"
+          href={extratoHref}
           className="text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300"
         >
           Ver extrato →
@@ -198,7 +260,21 @@ function AccountCard({ account, onEdit, onToggle, onDelete }: AccountCardProps) 
   );
 }
 
-// ─── lista ─────────────────────────────────────────────────────────────────────
+// ─── empty state ──────────────────────────────────────────────────────────────
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-16 text-center dark:border-zinc-800 dark:bg-zinc-950">
+      <p className="text-sm text-zinc-400 dark:text-zinc-500">{message}</p>
+    </div>
+  );
+}
+
+// ─── tabs ─────────────────────────────────────────────────────────────────────
+
+type Tab = "active" | "archived";
+
+// ─── lista principal ───────────────────────────────────────────────────────────
 
 interface AccountListProps {
   accounts: AccountResponse[];
@@ -208,28 +284,80 @@ interface AccountListProps {
 }
 
 export function AccountList({ accounts, onEdit, onToggle, onDelete }: AccountListProps) {
-  if (accounts.length === 0) {
-    return (
-      <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-16 text-center dark:border-zinc-800 dark:bg-zinc-950">
-        <p className="text-sm text-zinc-400 dark:text-zinc-500">Nenhuma conta cadastrada.</p>
-        <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-600">
-          Clique em &quot;Nova conta&quot; para começar.
-        </p>
-      </div>
-    );
-  }
+  const [tab, setTab] = useState<Tab>("active");
+
+  const active = accounts.filter((a) => a.active);
+  const archived = accounts.filter((a) => !a.active);
+
+  // quando a última conta arquivada some (reativada/excluída), volta para ativas
+  useEffect(() => {
+    if (archived.length === 0) setTab("active");
+  }, [archived.length]);
+
+  const displayed = tab === "active" ? active : archived;
+
+  const hasArchived = archived.length > 0;
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {accounts.map((acc) => (
-        <AccountCard
-          key={acc.id}
-          account={acc}
-          onEdit={() => onEdit(acc)}
-          onToggle={() => onToggle(acc)}
-          onDelete={() => onDelete(acc)}
+    <div className="flex flex-col gap-4">
+      {/* abas — só exibe se houver contas arquivadas */}
+      {hasArchived && (
+        <div className="flex rounded-xl border border-zinc-200 bg-zinc-100 p-1 dark:border-zinc-700 dark:bg-zinc-800">
+          <button
+            type="button"
+            onClick={() => setTab("active")}
+            className={`flex-1 rounded-lg py-2 text-sm transition-all ${
+              tab === "active"
+                ? "bg-white font-semibold text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-50"
+                : "font-medium text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+            }`}
+          >
+            Ativas
+            {active.length > 0 && (
+              <span className="ml-1.5 rounded-full bg-zinc-200 px-1.5 py-0.5 text-xs dark:bg-zinc-600">
+                {active.length}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("archived")}
+            className={`flex-1 rounded-lg py-2 text-sm transition-all ${
+              tab === "archived"
+                ? "bg-white font-semibold text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-50"
+                : "font-medium text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+            }`}
+          >
+            Arquivadas
+            <span className="ml-1.5 rounded-full bg-zinc-200 px-1.5 py-0.5 text-xs dark:bg-zinc-600">
+              {archived.length}
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* grade de cards */}
+      {displayed.length === 0 ? (
+        <EmptyState
+          message={
+            tab === "active"
+              ? 'Nenhuma conta ativa. Clique em "Nova conta" para começar.'
+              : "Nenhuma conta arquivada."
+          }
         />
-      ))}
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {displayed.map((acc) => (
+            <AccountCard
+              key={acc.id}
+              account={acc}
+              onEdit={() => onEdit(acc)}
+              onToggle={() => onToggle(acc)}
+              onDelete={() => onDelete(acc)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

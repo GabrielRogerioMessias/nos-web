@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, X, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { getCreditCards, getInvoice, payInvoice } from "@/lib/credit-cards";
 import { getAccounts } from "@/lib/accounts";
 import { getVaults, type VaultResponse } from "@/lib/vaults";
+import { getTransaction, updateTransaction } from "@/lib/transactions";
+import { SlideOver } from "@/components/ui/SlideOver";
+import { TransactionForm } from "@/components/transactions/TransactionForm";
+import { DeleteTransactionModal } from "@/components/transactions/DeleteTransactionModal";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
-import type { CreditCardResponse, InvoiceResponse, AccountResponse } from "@/types/dashboard";
+import type { CreditCardResponse, InvoiceResponse, AccountResponse, InvoiceTransaction, TransactionResponse, TransactionRequest } from "@/types/dashboard";
 
 let toastId = 0;
 
@@ -70,6 +74,138 @@ function InvoiceSkeleton() {
         ))}
       </div>
     </div>
+  );
+}
+
+// ─── linha de transação com ações ─────────────────────────────────────────────
+
+interface InvoiceTxRowProps {
+  tx: InvoiceTransaction;
+  readOnly?: boolean;
+  onEdit: (tx: InvoiceTransaction) => void;
+  onDelete: (tx: InvoiceTransaction) => void;
+}
+
+function InvoiceTxRow({ tx, readOnly, onEdit, onDelete }: InvoiceTxRowProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <div className="flex items-center justify-between gap-4 px-5 py-4">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm text-zinc-900 dark:text-zinc-100">{tx.description}</p>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500">
+          {tx.category?.name ?? "—"} · {formatDate(tx.transactionDate)}
+        </p>
+      </div>
+
+      <div className="flex flex-shrink-0 items-center gap-2">
+        <span className="text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
+          – {formatCurrency(tx.amount)}
+        </span>
+
+        {/* menu de ações — oculto em modo leitura */}
+        {!readOnly && (
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500 dark:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-400"
+            >
+              <MoreHorizontal size={14} />
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-8 z-20 min-w-[128px] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                  <button
+                    onClick={() => { setMenuOpen(false); onEdit(tx); }}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    <Pencil size={13} /> Editar
+                  </button>
+                  <div className="border-t border-zinc-100 dark:border-zinc-800" />
+                  <button
+                    onClick={() => { setMenuOpen(false); onDelete(tx); }}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
+                  >
+                    <Trash2 size={13} /> Excluir
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── conteúdo da fatura ──────────────────────────────────────────────────────
+
+interface InvoiceContentProps {
+  invoice: InvoiceResponse;
+  onPayClick: () => void;
+  onEditTx: (tx: InvoiceTransaction) => void;
+  onDeleteTx: (tx: InvoiceTransaction) => void;
+}
+
+function InvoiceContent({ invoice, onPayClick, onEditTx, onDeleteTx }: InvoiceContentProps) {
+  const isInvoicePaid = invoice.paid;
+
+  return (
+    <>
+      {/* resumo */}
+      <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Total da fatura</p>
+          {isInvoicePaid && (
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-400">
+              Paga
+            </span>
+          )}
+        </div>
+        <p className="mt-2 text-4xl font-light tracking-tight text-zinc-900 dark:text-zinc-100">
+          {formatCurrency(invoice.totalAmount)}
+        </p>
+        <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
+          Fecha {formatDate(invoice.closingDate)} · Vence {formatDate(invoice.dueDate)}
+        </p>
+        {!isInvoicePaid && invoice.totalAmount > 0 && (
+          <button
+            onClick={onPayClick}
+            className="mt-5 w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Pagar fatura
+          </button>
+        )}
+      </div>
+
+      {/* lista de compras */}
+      {invoice.transactions.length === 0 ? (
+        <div className="rounded-xl border border-zinc-200 bg-white px-5 py-12 text-center dark:border-zinc-800 dark:bg-zinc-950">
+          <p className="text-sm text-zinc-400 dark:text-zinc-500">Nenhuma compra nesta fatura.</p>
+        </div>
+      ) : (
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Compras</p>
+            {isInvoicePaid && (
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">Somente leitura</p>
+            )}
+          </div>
+          <div className="flex flex-col divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-950">
+            {invoice.transactions.map((tx) => (
+              <InvoiceTxRow
+                key={tx.id}
+                tx={tx}
+                readOnly={isInvoicePaid}
+                onEdit={onEditTx}
+                onDelete={onDeleteTx}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -227,6 +363,9 @@ export default function CardDetailPage() {
   const [invoiceLoading, setInvoiceLoading] = useState(false);
   const [invoiceError, setInvoiceError] = useState(false);
   const [payModalOpen, setPayModalOpen] = useState(false);
+  const [editingTx, setEditingTx] = useState<TransactionResponse | null>(null);
+  const [deletingTx, setDeletingTx] = useState<TransactionResponse | null>(null);
+  const [txActionLoading, setTxActionLoading] = useState(false);
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
   function addToast(message: string, type: ToastData["type"] = "success") {
@@ -261,6 +400,39 @@ export default function CardDetailPage() {
 
   function handlePrev() { setMonth((m) => prevMonth(m)); }
   function handleNext() { setMonth((m) => nextMonth(m)); }
+
+  async function handleEditTx(invTx: InvoiceTransaction) {
+    setTxActionLoading(true);
+    try {
+      const full = await getTransaction(invTx.id);
+      setEditingTx(full);
+    } catch {
+      addToast("Não foi possível carregar a transação.", "error");
+    } finally {
+      setTxActionLoading(false);
+    }
+  }
+
+  async function handleDeleteTx(invTx: InvoiceTransaction) {
+    setTxActionLoading(true);
+    try {
+      const full = await getTransaction(invTx.id);
+      setDeletingTx(full);
+    } catch {
+      addToast("Não foi possível carregar a transação.", "error");
+    } finally {
+      setTxActionLoading(false);
+    }
+  }
+
+  async function handleSaveEdit(payload: TransactionRequest) {
+    if (!editingTx) return;
+    await updateTransaction(editingTx.id, payload);
+    setEditingTx(null);
+    addToast("Transação atualizada.");
+    loadInvoice(month);
+    window.dispatchEvent(new CustomEvent("transaction-updated"));
+  }
 
   return (
     <>
@@ -316,53 +488,12 @@ export default function CardDetailPage() {
             <p className="text-sm text-zinc-400 dark:text-zinc-500">Não foi possível carregar a fatura.</p>
           </div>
         ) : invoice ? (
-          <>
-            {/* resumo */}
-            <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Total da fatura</p>
-              <p className="mt-2 text-4xl font-light tracking-tight text-zinc-900 dark:text-zinc-100">
-                {formatCurrency(invoice.totalAmount)}
-              </p>
-              <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
-                Fecha {formatDate(invoice.closingDate)} · Vence {formatDate(invoice.dueDate)}
-              </p>
-
-              {invoice.totalAmount > 0 && (
-                <button
-                  onClick={() => setPayModalOpen(true)}
-                  className="mt-5 w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                >
-                  Pagar fatura
-                </button>
-              )}
-            </div>
-
-            {/* lista de compras */}
-            {invoice.transactions.length === 0 ? (
-              <div className="rounded-xl border border-zinc-200 bg-white px-5 py-12 text-center dark:border-zinc-800 dark:bg-zinc-950">
-                <p className="text-sm text-zinc-400 dark:text-zinc-500">Nenhuma compra nesta fatura.</p>
-              </div>
-            ) : (
-              <div>
-                <p className="mb-3 text-sm font-medium text-zinc-900 dark:text-zinc-100">Compras</p>
-                <div className="flex flex-col divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-950">
-                  {invoice.transactions.map((tx) => (
-                    <div key={tx.id} className="flex items-center justify-between gap-4 px-5 py-4">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm text-zinc-900 dark:text-zinc-100">{tx.description}</p>
-                        <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                          {tx.category?.name ?? "—"} · {formatDate(tx.transactionDate)}
-                        </p>
-                      </div>
-                      <span className="flex-shrink-0 text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
-                        – {formatCurrency(tx.amount)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+          <InvoiceContent
+            invoice={invoice}
+            onPayClick={() => setPayModalOpen(true)}
+            onEditTx={handleEditTx}
+            onDeleteTx={handleDeleteTx}
+          />
         ) : null}
       </div>
 
@@ -380,6 +511,43 @@ export default function CardDetailPage() {
           onError={() => {
             setPayModalOpen(false);
             addToast("Erro ao pagar a fatura. Tente novamente.", "error");
+          }}
+        />
+      )}
+
+      {/* loading de transação */}
+      {txActionLoading && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/10">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700" />
+        </div>
+      )}
+
+      {/* slide-over: editar transação */}
+      <SlideOver
+        open={!!editingTx}
+        onClose={() => setEditingTx(null)}
+        title="Editar transação"
+      >
+        {editingTx && (
+          <TransactionForm
+            editing={editingTx}
+            onSave={handleSaveEdit}
+            onSuccess={() => {}}
+            onCancel={() => setEditingTx(null)}
+          />
+        )}
+      </SlideOver>
+
+      {/* modal: excluir transação */}
+      {deletingTx && (
+        <DeleteTransactionModal
+          tx={deletingTx}
+          onClose={() => setDeletingTx(null)}
+          onSuccess={(message) => {
+            setDeletingTx(null);
+            addToast(message);
+            loadInvoice(month);
+            window.dispatchEvent(new CustomEvent("transaction-updated"));
           }}
         />
       )}

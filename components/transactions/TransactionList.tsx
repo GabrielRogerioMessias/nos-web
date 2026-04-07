@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightLeft, Pencil, Trash2 } from "lucide-react";
+import { ArrowRightLeft, CreditCard, Landmark, Lock, Pencil, Trash2, Wallet } from "lucide-react";
 import { DeleteTransactionModal } from "@/components/transactions/DeleteTransactionModal";
 import type { TransactionResponse } from "@/types/dashboard";
 
@@ -39,17 +39,72 @@ export function TransactionListSkeleton() {
   );
 }
 
+// ─── indicador de origem ───────────────────────────────────────────────────────
+
+function SourceBadge({ tx }: { tx: TransactionResponse }) {
+  const isTransfer = tx.type === "TRANSFER";
+  const isInvoiceLocked = tx.invoicePaid === true;
+
+  if (isTransfer && !tx.category) {
+    return (
+      <span className="mt-0.5 flex items-center gap-1 text-xs text-zinc-300 dark:text-zinc-600">
+        <ArrowRightLeft size={11} className="flex-shrink-0" />
+        Movimentação
+      </span>
+    );
+  }
+
+  // linha de categoria + origem
+  return (
+    <span className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-zinc-400 dark:text-zinc-500">
+      {/* categoria */}
+      {tx.category?.name && (
+        <span className="truncate">{tx.category.name}</span>
+      )}
+
+      {/* separador + origem */}
+      {tx.creditCard ? (
+        <>
+          <span className="text-zinc-200 dark:text-zinc-700">·</span>
+          <CreditCard size={11} className="flex-shrink-0 text-zinc-400 dark:text-zinc-500" />
+          <span className="truncate">{tx.creditCard.name}</span>
+          {isInvoiceLocked && (
+            <Lock size={10} className="flex-shrink-0 text-zinc-300 dark:text-zinc-600" />
+          )}
+        </>
+      ) : tx.account ? (
+        <>
+          <span className="text-zinc-200 dark:text-zinc-700">·</span>
+          {tx.type === "INCOME" ? (
+            <Wallet size={11} className="flex-shrink-0 text-zinc-400 dark:text-zinc-500" />
+          ) : (
+            <Landmark size={11} className="flex-shrink-0 text-zinc-400 dark:text-zinc-500" />
+          )}
+          <span className="truncate">{tx.account.name}</span>
+        </>
+      ) : !tx.category?.name ? (
+        <span>—</span>
+      ) : null}
+    </span>
+  );
+}
+
 // ─── linha individual ──────────────────────────────────────────────────────────
 
 interface TransactionRowProps {
   tx: TransactionResponse;
+  readOnly?: boolean;
   onEdit: (tx: TransactionResponse) => void;
   onDeleteRequest: (tx: TransactionResponse) => void;
 }
 
-function TransactionRow({ tx, onEdit, onDeleteRequest }: TransactionRowProps) {
+function TransactionRow({ tx, readOnly = false, onEdit, onDeleteRequest }: TransactionRowProps) {
   const isExpense = tx.type === "EXPENSE";
   const isTransfer = tx.type === "TRANSFER";
+
+  // trava contábil por fatura paga (independente do readOnly global de conta arquivada)
+  const isInvoiceLocked = tx.invoicePaid === true;
+  const isLocked = readOnly || isInvoiceLocked;
 
   const amountColor = isExpense
     ? "text-zinc-500 dark:text-zinc-400"
@@ -59,25 +114,15 @@ function TransactionRow({ tx, onEdit, onDeleteRequest }: TransactionRowProps) {
 
   return (
     <div className="flex items-center gap-3 px-4 py-3.5 sm:px-5 sm:py-4">
-      {/* descrição + meta — cresce e trunca */}
+      {/* descrição + origem */}
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
           {tx.description}
         </span>
-        <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-zinc-400 dark:text-zinc-500">
-          {isTransfer && !tx.category ? (
-            <>
-              <ArrowRightLeft size={11} className="flex-shrink-0 text-zinc-300 dark:text-zinc-600" />
-              <span className="text-zinc-300 dark:text-zinc-600">Movimentação</span>
-            </>
-          ) : (
-            tx.category?.name ?? "—"
-          )}
-          {tx.account ? ` · ${tx.account.name}` : ""}
-        </span>
+        <SourceBadge tx={tx} />
       </div>
 
-      {/* valor + data + ações — nunca quebra linha */}
+      {/* valor + data + ações */}
       <div className="flex flex-shrink-0 flex-col items-end gap-0.5">
         <span className={`whitespace-nowrap text-sm font-semibold tabular-nums ${amountColor}`}>
           {isExpense ? "– " : isTransfer ? "" : "+ "}
@@ -87,20 +132,24 @@ function TransactionRow({ tx, onEdit, onDeleteRequest }: TransactionRowProps) {
           <span className="text-xs tabular-nums text-zinc-400 dark:text-zinc-500">
             {formatDate(tx.transactionDate)}
           </span>
-          <button
-            onClick={() => onEdit(tx)}
-            className="rounded p-1 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500 dark:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-400"
-            aria-label="Editar transação"
-          >
-            <Pencil size={13} />
-          </button>
-          <button
-            onClick={() => onDeleteRequest(tx)}
-            className="rounded p-1 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500 dark:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-400"
-            aria-label="Excluir transação"
-          >
-            <Trash2 size={13} />
-          </button>
+          {!isLocked && (
+            <>
+              <button
+                onClick={() => onEdit(tx)}
+                className="rounded p-1 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500 dark:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-400"
+                aria-label="Editar transação"
+              >
+                <Pencil size={13} />
+              </button>
+              <button
+                onClick={() => onDeleteRequest(tx)}
+                className="rounded p-1 text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500 dark:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-400"
+                aria-label="Excluir transação"
+              >
+                <Trash2 size={13} />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -111,18 +160,21 @@ function TransactionRow({ tx, onEdit, onDeleteRequest }: TransactionRowProps) {
 
 interface TransactionListProps {
   transactions: TransactionResponse[];
+  readOnly?: boolean;
   onEdit: (tx: TransactionResponse) => void;
   onDeleteSuccess: (message: string) => void;
 }
 
-export function TransactionList({ transactions, onEdit, onDeleteSuccess }: TransactionListProps) {
+export function TransactionList({ transactions, readOnly = false, onEdit, onDeleteSuccess }: TransactionListProps) {
   const [pendingDelete, setPendingDelete] = useState<TransactionResponse | null>(null);
 
   if (transactions.length === 0) {
     return (
       <div className="rounded-xl border border-zinc-200 bg-white px-5 py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
         <p className="text-sm text-zinc-400 dark:text-zinc-500">Nenhuma transação encontrada.</p>
-        <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-600">Clique em "Nova transação" para começar.</p>
+        {!readOnly && (
+          <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-600">Clique em &quot;Nova transação&quot; para começar.</p>
+        )}
       </div>
     );
   }
@@ -134,13 +186,14 @@ export function TransactionList({ transactions, onEdit, onDeleteSuccess }: Trans
           <TransactionRow
             key={tx.id}
             tx={tx}
+            readOnly={readOnly}
             onEdit={onEdit}
             onDeleteRequest={setPendingDelete}
           />
         ))}
       </div>
 
-      {pendingDelete && (
+      {pendingDelete && !pendingDelete.invoicePaid && !readOnly && (
         <DeleteTransactionModal
           tx={pendingDelete}
           onClose={() => setPendingDelete(null)}

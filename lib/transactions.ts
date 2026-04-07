@@ -41,6 +41,11 @@ export async function deleteTransaction(id: string): Promise<void> {
   await api.delete(`/transactions/${id}`);
 }
 
+export async function getTransaction(id: string): Promise<TransactionResponse> {
+  const { data } = await api.get<TransactionResponse>(`/transactions/${id}`);
+  return data;
+}
+
 export async function getCategories(type: "INCOME" | "EXPENSE"): Promise<CategoryResponse[]> {
   const { data } = await api.get<CategoryResponse[]>("/categories", { params: { type } });
   return data;

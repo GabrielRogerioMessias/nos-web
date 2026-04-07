@@ -56,12 +56,15 @@ export default function ExtratoPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromDash = searchParams.get("from") === "dash";
+  const accountIdParam = searchParams.get("accountId");
 
   const [selectedMonth, setSelectedMonth] = useState(currentMonthISO());
   const [transactions, setTransactions] = useState<TransactionResponse[] | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(0);
-  const [filters, setFilters] = useState<TransactionFilters>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<TransactionFilters>(
+    accountIdParam ? { accountId: accountIdParam } : EMPTY_FILTERS
+  );
   const [accounts, setAccounts] = useState<AccountResponse[]>([]);
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionResponse | null>(null);
@@ -76,12 +79,22 @@ export default function ExtratoPage() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }
 
-  // carrega contas uma única vez para popular o select
+  // carrega contas uma única vez para popular o select e detectar arquivadas
+  const [allAccounts, setAllAccounts] = useState<AccountResponse[]>([]);
+
   useEffect(() => {
     getAccounts().catch(() => null).then((data) => {
-      if (data) setAccounts(data.filter((a) => a.active));
+      if (data) {
+        setAllAccounts(data);
+        setAccounts(data.filter((a) => a.active));
+      }
     });
   }, []);
+
+  // conta selecionada está arquivada? → extrato somente-leitura
+  const isAccountReadOnly = accountIdParam
+    ? allAccounts.some((a) => a.id === accountIdParam && !a.active)
+    : false;
 
   const loadTransactions = useCallback(async (p: number, f: TransactionFilters, month: string) => {
     setTransactions(null);
@@ -191,13 +204,15 @@ export default function ExtratoPage() {
               )}
             </div>
           </div>
-          <button
-            onClick={openNew}
-            className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            <Plus size={15} />
-            Nova transação
-          </button>
+          {!isAccountReadOnly && (
+            <button
+              onClick={openNew}
+              className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              <Plus size={15} />
+              Nova transação
+            </button>
+          )}
         </div>
 
         {/* seletor de mês */}
@@ -236,12 +251,22 @@ export default function ExtratoPage() {
           <PeriodSummary transactions={transactions} />
         )}
 
+        {/* aviso de conta arquivada */}
+        {isAccountReadOnly && (
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/50">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              Esta conta está arquivada. O extrato é somente-leitura — reative a conta para registrar novos lançamentos.
+            </p>
+          </div>
+        )}
+
         {/* lista */}
         {transactions === null ? (
           <TransactionListSkeleton />
         ) : (
           <TransactionList
             transactions={transactions}
+            readOnly={isAccountReadOnly}
             onEdit={openEdit}
             onDeleteSuccess={(message) => {
               addToast(message);
@@ -274,22 +299,24 @@ export default function ExtratoPage() {
         )}
       </div>
 
-      <SlideOver
-        open={slideOpen}
-        onClose={closeSlide}
-        title={editing ? "Editar transação" : "Nova transação"}
-      >
-        <TransactionForm
-          editing={editing}
-          onSave={handleSave}
-          onSuccess={() => {
-            closeSlide();
-            addToast("Registrado com sucesso.");
-            loadTransactions(page, filters, selectedMonth);
-          }}
-          onCancel={closeSlide}
-        />
-      </SlideOver>
+      {!isAccountReadOnly && (
+        <SlideOver
+          open={slideOpen}
+          onClose={closeSlide}
+          title={editing ? "Editar transação" : "Nova transação"}
+        >
+          <TransactionForm
+            editing={editing}
+            onSave={handleSave}
+            onSuccess={() => {
+              closeSlide();
+              addToast("Registrado com sucesso.");
+              loadTransactions(page, filters, selectedMonth);
+            }}
+            onCancel={closeSlide}
+          />
+        </SlideOver>
+      )}
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </>

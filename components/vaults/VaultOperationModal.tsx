@@ -51,6 +51,7 @@ export function VaultOperationModal({ vault, type, onClose, onSuccess, onError }
   const [errors, setErrors] = useState<{ amount?: string; accountId?: string }>({});
 
   const isDeposit = type === "deposit";
+  const containerLabel = vault.vaultType === "GOAL" ? "meta" : "cofre";
 
   useEffect(() => {
     getAccounts().then((list) => {
@@ -130,7 +131,7 @@ export function VaultOperationModal({ vault, type, onClose, onSuccess, onError }
             </div>
             <div>
               <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                {isDeposit ? "Guardar no cofre" : "Resgatar do cofre"}
+                {isDeposit ? `Guardar na ${containerLabel}` : `Resgatar da ${containerLabel}`}
               </p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">{vault.name}</p>
             </div>
@@ -145,7 +146,7 @@ export function VaultOperationModal({ vault, type, onClose, onSuccess, onError }
 
         {/* saldo atual */}
         <div className="mb-5 rounded-lg border border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-800/50">
-          <p className="text-xs text-zinc-400 dark:text-zinc-500">Saldo atual do cofre</p>
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">Saldo atual da {containerLabel}</p>
           <p className="mt-0.5 text-base font-medium text-zinc-900 dark:text-zinc-50">
             {formatCurrency(vault.currentBalance)}
           </p>

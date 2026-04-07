@@ -164,7 +164,13 @@ export default function CartoesPage() {
         {cards === null ? (
           <CreditCardListSkeleton />
         ) : (
-          <CreditCardList items={items} onEdit={openEdit} onDelete={handleDelete} />
+          <CreditCardList
+            items={items}
+            onEdit={openEdit}
+            onDelete={handleDelete}
+            onPaymentSuccess={() => { addToast("Fatura paga com sucesso!"); loadCards(); }}
+            onPaymentError={(msg) => addToast(msg, "error")}
+          />
         )}
       </div>
 

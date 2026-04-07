@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { X, ArrowDownCircle, ArrowUpCircle, Sparkles } from "lucide-react";
 import { getVaultTransactions, type VaultResponse, type VaultTransaction } from "@/lib/vaults";
 
 function formatCurrency(value: number) {
@@ -44,7 +44,10 @@ export function VaultStatementSheet({ vault, onClose }: Props) {
     setLoading(true);
     getVaultTransactions(vault.id, page)
       .then((res) => {
-        setTransactions((prev) => (page === 0 ? res.content : [...prev, ...res.content]));
+        const sorted = [...res.content].sort(
+          (a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime(),
+        );
+        setTransactions((prev) => (page === 0 ? sorted : [...prev, ...sorted]));
         setTotalPages(res.totalPages);
       })
       .finally(() => setLoading(false));
@@ -110,28 +113,42 @@ export function VaultStatementSheet({ vault, onClose }: Props) {
               <div className="absolute left-4 top-4 h-[calc(100%-2rem)] w-px bg-zinc-100 dark:bg-zinc-800" />
 
               {transactions.map((tx) => {
-                const isDeposit = tx.type === "DEPOSIT";
+                const config =
+                  tx.type === "DEPOSIT"
+                    ? {
+                        label: "Depósito",
+                        icon: <ArrowDownCircle size={15} className="text-emerald-500" />,
+                        bg: "bg-emerald-50 dark:bg-emerald-950/50",
+                        amountClass: "text-emerald-600 dark:text-emerald-400",
+                        sign: "+",
+                      }
+                    : tx.type === "YIELD"
+                    ? {
+                        label: "Rendimento",
+                        icon: <Sparkles size={15} className="text-blue-500" />,
+                        bg: "bg-blue-50 dark:bg-blue-950/50",
+                        amountClass: "text-blue-600 dark:text-blue-400",
+                        sign: "+",
+                      }
+                    : {
+                        label: "Resgate",
+                        icon: <ArrowUpCircle size={15} className="text-rose-500" />,
+                        bg: "bg-rose-50 dark:bg-rose-950/50",
+                        amountClass: "text-rose-500 dark:text-rose-400",
+                        sign: "-",
+                      };
+
                 return (
                   <div key={tx.id} className="relative flex items-start gap-3 py-3">
                     {/* icon dot */}
-                    <div
-                      className={`relative z-10 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
-                        isDeposit
-                          ? "bg-emerald-50 dark:bg-emerald-950/50"
-                          : "bg-red-50 dark:bg-red-950/50"
-                      }`}
-                    >
-                      {isDeposit ? (
-                        <ArrowDownCircle size={15} className="text-emerald-500" />
-                      ) : (
-                        <ArrowUpCircle size={15} className="text-red-500" />
-                      )}
+                    <div className={`relative z-10 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${config.bg}`}>
+                      {config.icon}
                     </div>
 
                     {/* content */}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                        {isDeposit ? "Depósito" : "Resgate"}
+                        {config.label}
                       </p>
                       {tx.description && (
                         <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
@@ -148,13 +165,8 @@ export function VaultStatementSheet({ vault, onClose }: Props) {
                     </div>
 
                     {/* amount */}
-                    <p
-                      className={`flex-shrink-0 text-sm font-medium ${
-                        isDeposit ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"
-                      }`}
-                    >
-                      {isDeposit ? "+" : "-"}
-                      {formatCurrency(tx.amount)}
+                    <p className={`flex-shrink-0 text-sm font-medium ${config.amountClass}`}>
+                      {config.sign}{formatCurrency(tx.amount)}
                     </p>
                   </div>
                 );

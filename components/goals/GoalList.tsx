@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   MoreHorizontal, Pencil, Trash2, CheckCircle2,
-  ArrowDownCircle, ArrowUpCircle, ScrollText,
+  ArrowDownCircle, ArrowUpCircle, Sparkles, ChevronRight,
   AlertTriangle,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
@@ -271,36 +271,50 @@ function GoalCard({ goal, onEdit, onDelete, onAchieve, onDeposit, onWithdraw, on
 
         {/* rodapé de ações */}
         {hasVault && (
-          <div className="flex items-center border-t border-zinc-100 dark:border-zinc-800">
-            {!isAchieved && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => onDeposit(goal)}
-                  className="flex flex-1 items-center justify-center gap-1.5 py-3 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
-                >
-                  <ArrowDownCircle size={13} /> Guardar
-                </button>
-                <div className="h-5 w-px bg-zinc-100 dark:bg-zinc-800" />
-                <button
-                  type="button"
-                  onClick={() => onWithdraw(goal)}
-                  className="flex flex-1 items-center justify-center gap-1.5 py-3 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
-                >
-                  <ArrowUpCircle size={13} /> Resgatar
-                </button>
-                <div className="h-5 w-px bg-zinc-100 dark:bg-zinc-800" />
-              </>
-            )}
-            <button
-              type="button"
-              onClick={() => onStatement(goal)}
-              className="flex items-center justify-center px-4 py-3 text-zinc-400 transition-colors hover:bg-zinc-50 hover:text-zinc-700 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-300"
-              title="Ver extrato do cofre"
-            >
-              <ScrollText size={14} />
-            </button>
-          </div>
+          <>
+            {/* link ver extrato */}
+            <div className="flex w-full justify-end px-5 mb-3">
+              <button
+                type="button"
+                onClick={() => onStatement(goal)}
+                className="flex items-center gap-1 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                Ver extrato <ChevronRight size={12} />
+              </button>
+            </div>
+
+            <div className="flex w-full items-center border-t border-zinc-200 dark:border-zinc-800">
+              {!isAchieved ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onDeposit(goal)}
+                    className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100 border-r border-zinc-200 dark:border-zinc-800"
+                  >
+                    <ArrowDownCircle size={14} /> Guardar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onWithdraw(goal)}
+                    className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100 border-r border-zinc-200 dark:border-zinc-800"
+                  >
+                    <ArrowUpCircle size={14} /> Resgatar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onStatement(goal)}
+                    className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
+                  >
+                    <Sparkles size={14} /> Rendimentos
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-1 items-center justify-center h-11 text-xs text-zinc-400 dark:text-zinc-600">
+                  Meta concluída
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
 

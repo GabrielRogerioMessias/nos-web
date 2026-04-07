@@ -21,7 +21,7 @@ export interface VaultRequest {
 
 export interface VaultTransaction {
   id: string;
-  type: "DEPOSIT" | "WITHDRAWAL";
+  type: "DEPOSIT" | "WITHDRAWAL" | "YIELD";
   amount: number;
   description?: string;
   transactionDate: string;

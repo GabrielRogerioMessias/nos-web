@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, PiggyBank, ArrowDownCircle, ArrowUpCircle, ScrollText, Sparkles, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Plus, PiggyBank, ArrowDownCircle, ArrowUpCircle, Sparkles, MoreHorizontal, Pencil, Trash2, ChevronRight } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import { getVaults, deleteVault, type VaultResponse } from "@/lib/vaults";
@@ -128,12 +128,6 @@ function VaultCard({
                   >
                     <Pencil size={13} /> Editar
                   </button>
-                  <button
-                    onClick={() => { setMenuOpen(false); onStatement(); }}
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                  >
-                    <ScrollText size={13} /> Ver extrato
-                  </button>
                   <div className="border-t border-zinc-100 dark:border-zinc-800" />
                   <button
                     onClick={() => { setMenuOpen(false); onDelete(); }}
@@ -161,6 +155,16 @@ function VaultCard({
               : "Reserva de uso livre."}
           </p>
         </div>
+      </div>
+
+      {/* ── link ver extrato ── */}
+      <div className="flex w-full justify-end px-6 mb-3">
+        <button
+          onClick={onStatement}
+          className="flex items-center gap-1 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+        >
+          Ver extrato <ChevronRight size={12} />
+        </button>
       </div>
 
       {/* ── rodapé de ações ── */}

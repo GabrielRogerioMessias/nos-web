@@ -194,6 +194,132 @@ export function ExpenseByCategoryChart({ categories, month }: Props) {
   );
 }
 
+// ─── lista mobile-first: barras de progresso horizontais ─────────────────────
+
+interface ListProps {
+  categories: CategoryExpense[];
+  month: string;
+}
+
+function formatCurrencyCompact(value: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+export function ExpenseByCategoryList({ categories, month }: ListProps) {
+  const safe = Array.isArray(categories) ? categories : [];
+
+  if (safe.length === 0) {
+    return (
+      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-4 flex items-baseline justify-between">
+          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Onde seu dinheiro foi</p>
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">{month}</p>
+        </div>
+        <p className="py-8 text-center text-sm text-zinc-400 dark:text-zinc-500">
+          Nenhuma despesa registrada neste mês.
+        </p>
+      </div>
+    );
+  }
+
+  const displayed = safe.slice(0, 7);
+  const total = safe.reduce((s, c) => s + c.totalAmount, 0);
+
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mb-5 flex items-baseline justify-between">
+        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Onde seu dinheiro foi</p>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500">{month}</p>
+      </div>
+
+      <ul className="flex flex-col gap-4">
+        {displayed.map((cat, i) => {
+          const color = resolveColor(cat.color, i);
+          const pct = Math.min(100, Math.round(cat.percentage));
+          return (
+            <li key={cat.categoryId}>
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className="inline-block h-2 w-2 flex-shrink-0 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="truncate text-sm text-zinc-700 dark:text-zinc-300">
+                    {cat.categoryName}
+                  </span>
+                </div>
+                <div className="flex flex-shrink-0 items-baseline gap-2">
+                  <span className="text-sm font-medium tabular-nums text-zinc-900 dark:text-zinc-50">
+                    {formatCurrencyFull(cat.totalAmount)}
+                  </span>
+                  <span className="w-8 text-right text-xs tabular-nums text-zinc-400 dark:text-zinc-500">
+                    {pct}%
+                  </span>
+                </div>
+              </div>
+              {/* barra de progresso */}
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${pct}%`, backgroundColor: color }}
+                />
+              </div>
+            </li>
+          );
+        })}
+
+        {safe.length > 7 && (
+          <li className="flex items-center justify-between pt-1">
+            <span className="text-xs text-zinc-400 dark:text-zinc-500">
+              +{safe.length - 7} outras categorias
+            </span>
+            <span className="text-xs tabular-nums text-zinc-400 dark:text-zinc-500">
+              {formatCurrencyCompact(safe.slice(7).reduce((s, c) => s + c.totalAmount, 0))}
+            </span>
+          </li>
+        )}
+
+        <li className="flex items-center justify-between border-t border-zinc-100 pt-3 dark:border-zinc-800">
+          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Total</span>
+          <span className="text-xs font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+            {formatCurrencyFull(total)}
+          </span>
+        </li>
+      </ul>
+    </div>
+  );
+}
+
+export function ExpenseByCategoryListSkeleton() {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mb-5 flex items-baseline justify-between">
+        <div className="h-4 w-44 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
+        <div className="h-3 w-20 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+      </div>
+      <ul className="flex flex-col gap-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <li key={i}>
+            <div className="mb-1.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-700" />
+                <div className="h-3.5 w-28 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+              </div>
+              <div className="h-3.5 w-20 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
+            </div>
+            <div className="h-1.5 w-full animate-pulse rounded-full bg-zinc-100 dark:bg-zinc-800" />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function ExpenseByCategoryChartSkeleton() {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">

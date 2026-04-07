@@ -8,16 +8,18 @@ import {
   TrendingUp,
   TrendingDown,
   Wallet,
-  Landmark,
+  PiggyBank,
   Plus,
 } from "lucide-react";
 import {
+  getBalance,
   getIncomeVsExpense,
   getCashflow,
   getMonthlySummary,
   type CashflowResponse,
   type MonthlySummaryResponse,
 } from "@/lib/dashboard";
+import type { BalanceResponse } from "@/types/dashboard";
 import { getMe } from "@/lib/user";
 import { getTransactions } from "@/lib/transactions";
 import { useTransactionForm } from "@/components/transactions/TransactionContext";
@@ -121,20 +123,26 @@ function RecentTransactionsSkeleton() {
 
 interface MetricCardProps {
   label: string;
+  subtitle?: string;
   value: number;
   icon: React.ReactNode;
   iconBg: string;
   valueColor?: string;
 }
 
-function MetricCard({ label, value, icon, iconBg, valueColor }: MetricCardProps) {
+function MetricCard({ label, subtitle, value, icon, iconBg, valueColor }: MetricCardProps) {
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-          {label}
-        </p>
-        <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${iconBg}`}>
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+            {label}
+          </p>
+          {subtitle && (
+            <p className="mt-0.5 text-xs text-zinc-300 dark:text-zinc-600">{subtitle}</p>
+          )}
+        </div>
+        <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
           {icon}
         </div>
       </div>
@@ -273,22 +281,25 @@ export default function HomePage() {
 
   // dados independentes do mês
   const [cashflow, setCashflow] = useState<CashflowResponse | null>(null);
+  const [balance, setBalance] = useState<BalanceResponse | null>(null);
   const [performance, setPerformance] = useState<IncomeVsExpenseResponse | null | undefined>(undefined);
   const [recentTx, setRecentTx] = useState<TransactionResponse[] | null>(null);
 
   // carrega dados fixos uma única vez
   useEffect(() => {
     async function loadFixed() {
-      const [perf, tx, user, cf] = await Promise.all([
+      const [perf, tx, user, cf, bal] = await Promise.all([
         getIncomeVsExpense(6).catch(() => null),
         getTransactions(0).catch(() => null),
         getMe().catch(() => null),
         getCashflow().catch(() => null),
+        getBalance().catch(() => null),
       ]);
 
       if (user) setUserName(user.name.split(" ")[0]);
       setPerformance(perf ?? null);
       setCashflow(cf);
+      setBalance(bal);
 
       if (tx) {
         const sorted = [...tx.content].sort(
@@ -306,11 +317,13 @@ export default function HomePage() {
   // recarrega transações recentes quando uma transação é criada/editada
   useEffect(() => {
     async function onUpdated() {
-      const [tx, cf] = await Promise.all([
+      const [tx, cf, bal] = await Promise.all([
         getTransactions(0).catch(() => null),
         getCashflow().catch(() => null),
+        getBalance().catch(() => null),
       ]);
       if (cf) setCashflow(cf);
+      if (bal) setBalance(bal);
       if (tx) {
         const sorted = [...tx.content].sort(
           (a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime()
@@ -390,14 +403,25 @@ export default function HomePage() {
 
       {/* ── 4 cards de métricas ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Patrimônio — não depende do mês, depende do balance */}
+        {balance === null ? (
+          <MetricCardSkeleton />
+        ) : (
+          <MetricCard
+            label="Patrimônio"
+            subtitle="Contas e Cofres"
+            value={(balance?.totalAccounts ?? 0) + (balance?.totalVaults ?? 0)}
+            valueColor="text-zinc-900 dark:text-white"
+            iconBg="bg-zinc-100 dark:bg-zinc-800"
+            icon={<PiggyBank size={16} className="text-zinc-500 dark:text-zinc-400" />}
+          />
+        )}
+
+        {/* Receitas e Despesas — dependem do mês */}
         {summary === undefined ? (
           <>
             <MetricCardSkeleton />
             <MetricCardSkeleton />
-            <MetricCardSkeleton />
-            {cashflow === null ? <MetricCardSkeleton /> : (
-              <FreeCashCard data={cashflow} />
-            )}
           </>
         ) : (
           <>
@@ -415,19 +439,14 @@ export default function HomePage() {
               iconBg="bg-zinc-100 dark:bg-zinc-800"
               icon={<TrendingDown size={16} className="text-zinc-400 dark:text-zinc-500" />}
             />
-            <MetricCard
-              label="Saldo do mês"
-              value={monthBalance}
-              valueColor={monthBalance >= 0 ? "text-zinc-900 dark:text-white" : "text-red-500"}
-              iconBg="bg-zinc-100 dark:bg-zinc-800"
-              icon={<Landmark size={16} className="text-zinc-400 dark:text-zinc-500" />}
-            />
-            {cashflow === null ? (
-              <FreeCashCardSkeleton />
-            ) : (
-              <FreeCashCard data={cashflow} />
-            )}
           </>
+        )}
+
+        {/* Saldo Livre — não depende do mês */}
+        {cashflow === null ? (
+          <FreeCashCardSkeleton />
+        ) : (
+          <FreeCashCard data={cashflow} />
         )}
       </div>
 

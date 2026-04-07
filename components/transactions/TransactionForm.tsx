@@ -7,7 +7,7 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { getCategories } from "@/lib/transactions";
 import { getAccounts } from "@/lib/accounts";
-import { Building2, CreditCard as CreditCardIcon } from "lucide-react";
+import { Building2, CreditCard as CreditCardIcon, RefreshCw, Layers } from "lucide-react";
 import { getCreditCards, createInstallmentPlan } from "@/lib/credit-cards";
 import { createRecurringTransaction } from "@/lib/recurring-transactions";
 import type {
@@ -415,21 +415,29 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
                   error={fieldErrors.creditCardId}
                 />
 
-                <label className="flex cursor-pointer items-center gap-2.5">
-                  <input
-                    type="checkbox"
-                    checked={isInstallment}
-                    onChange={(e) => {
-                      setIsInstallment(e.target.checked);
-                      if (!e.target.checked) {
-                        setTotalInstallments("");
-                        setFieldErrors((prev) => ({ ...prev, totalInstallments: undefined }));
-                      }
-                    }}
-                    className="h-4 w-4 rounded border-zinc-300 accent-zinc-900 dark:accent-zinc-100 dark:border-zinc-600"
-                  />
-                  <span className="text-sm text-zinc-500 dark:text-zinc-400">Compra parcelada</span>
-                </label>
+                {/* toggle: compra parcelada */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !isInstallment;
+                    setIsInstallment(next);
+                    if (!next) {
+                      setTotalInstallments("");
+                      setFieldErrors((prev) => ({ ...prev, totalInstallments: undefined }));
+                    }
+                  }}
+                  className={`flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-sm transition-colors ${
+                    isInstallment
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                      : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 hover:text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-300"
+                  }`}
+                >
+                  <Layers size={15} className="flex-shrink-0" />
+                  <span className="flex-1 text-left">Compra parcelada</span>
+                  {isInstallment && (
+                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs dark:bg-zinc-900/20">ativo</span>
+                  )}
+                </button>
 
                 {isInstallment && (
                   <Input
@@ -548,26 +556,34 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
         {/* 7. RECORRÊNCIA */}
         {showRecurringOption && (
           <div className="flex flex-col gap-3">
-            <label className="flex cursor-pointer items-center gap-2.5">
-              <input
-                type="checkbox"
-                checked={isRecurring}
-                onChange={(e) => {
-                  setIsRecurring(e.target.checked);
-                  if (!e.target.checked) {
-                    setFrequency("");
-                    setFieldErrors((prev) => ({ ...prev, frequency: undefined }));
-                  } else {
-                    setPaymentMethod("account");
-                    setCreditCardId("");
-                    setIsInstallment(false);
-                    setTotalInstallments("");
-                  }
-                }}
-                className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
-              />
-              <span className="text-sm text-zinc-500 dark:text-zinc-400">É uma transação fixa/recorrente</span>
-            </label>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !isRecurring;
+                setIsRecurring(next);
+                if (!next) {
+                  setFrequency("");
+                  setFieldErrors((prev) => ({ ...prev, frequency: undefined }));
+                } else {
+                  // recorrente é mutuamente exclusivo com parcelamento e cartão
+                  setPaymentMethod("account");
+                  setCreditCardId("");
+                  setIsInstallment(false);
+                  setTotalInstallments("");
+                }
+              }}
+              className={`flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-sm transition-colors ${
+                isRecurring
+                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                  : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 hover:text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-300"
+              }`}
+            >
+              <RefreshCw size={15} className="flex-shrink-0" />
+              <span className="flex-1 text-left">Repetir esta transação</span>
+              {isRecurring && (
+                <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs dark:bg-zinc-900/20">ativo</span>
+              )}
+            </button>
 
             {isRecurring && (
               <Select
@@ -599,7 +615,15 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
           disabled={saving}
           className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
-          {saving ? "Salvando..." : editing ? "Salvar alterações" : "Salvar"}
+          {saving
+            ? "Salvando..."
+            : editing
+            ? "Salvar alterações"
+            : isRecurring
+            ? "Criar assinatura"
+            : isInstallment
+            ? "Parcelar compra"
+            : "Salvar"}
         </button>
       </div>
     </form>

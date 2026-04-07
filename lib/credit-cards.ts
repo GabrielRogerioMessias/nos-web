@@ -27,6 +27,29 @@ export async function getInvoice(id: string, month: string): Promise<InvoiceResp
   return data;
 }
 
+export interface InstallmentPlan {
+  id: string;
+  description: string;
+  totalAmount: number;
+  installmentAmount: number;
+  totalInstallments: number;
+  currentInstallment: number;
+  remainingAmount: number;
+  creditCardId: string;
+  creditCardName: string;
+  creditCardColor?: string;
+  categoryId?: string;
+  categoryName?: string;
+  firstInstallmentDate: string;
+  nextInstallmentDate?: string;
+  active: boolean;
+}
+
+export async function getInstallmentPlans(): Promise<InstallmentPlan[]> {
+  const { data } = await api.get<InstallmentPlan[]>("/installment-plans");
+  return data;
+}
+
 export async function createInstallmentPlan(payload: InstallmentPlanRequest): Promise<void> {
   await api.post("/installment-plans", payload);
 }

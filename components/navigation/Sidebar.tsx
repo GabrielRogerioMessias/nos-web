@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ScrollText, Landmark, CreditCard, Target, Tag, PiggyBank, Moon, Sun } from "lucide-react";
+import { Home, ScrollText, Landmark, CreditCard, Target, Tag, PiggyBank, Moon, Sun, Repeat2 } from "lucide-react";
 import { CalculatorWidget } from "@/components/ui/CalculatorWidget";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
@@ -12,6 +12,7 @@ const navItems = [
   { href: "/extrato", label: "Extrato", icon: ScrollText },
   { href: "/contas", label: "Contas", icon: Landmark },
   { href: "/cartoes", label: "Cartões", icon: CreditCard },
+  { href: "/assinaturas", label: "Ass. e Parcelas", icon: Repeat2 },
   { href: "/categorias", label: "Categorias", icon: Tag },
   { href: "/goals", label: "Metas", icon: Target },
   { href: "/cofres", label: "Cofres", icon: PiggyBank },

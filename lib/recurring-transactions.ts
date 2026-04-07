@@ -6,6 +6,14 @@ export interface RecurringTransaction {
   description: string;
   amount: number;
   type: "INCOME" | "EXPENSE";
+  frequency: "MONTHLY" | "YEARLY";
+  categoryId?: string;
+  categoryName?: string;
+  categoryColor?: string;
+  accountId?: string;
+  accountName?: string;
+  startDate: string;
+  nextDueDate?: string;
   active: boolean;
 }
 
@@ -18,6 +26,10 @@ export async function getRecurringTransactions(active?: boolean): Promise<Recurr
 
 export async function createRecurringTransaction(payload: RecurringTransactionRequest): Promise<void> {
   await api.post("/recurring-transactions", payload);
+}
+
+export async function toggleRecurringTransaction(id: string): Promise<void> {
+  await api.patch(`/recurring-transactions/${id}/toggle`);
 }
 
 export async function deleteRecurringTransaction(id: string): Promise<void> {

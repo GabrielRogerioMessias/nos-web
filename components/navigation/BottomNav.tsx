@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, ScrollText, PiggyBank, Plus, MoreHorizontal,
-  CreditCard, Target, Landmark, Tag, Moon, Sun, UserCircle, X,
+  CreditCard, Target, Landmark, Tag, Moon, Sun, UserCircle, X, Repeat2,
 } from "lucide-react";
 import { useTransactionForm } from "@/components/transactions/TransactionContext";
 import { useTheme } from "next-themes";
@@ -27,6 +27,7 @@ const moreItems = [
   { href: "/cartoes", label: "Cartões", icon: CreditCard },
   { href: "/goals", label: "Metas", icon: Target },
   { href: "/contas", label: "Contas", icon: Landmark },
+  { href: "/assinaturas", label: "Ass. e Parcelas", icon: Repeat2 },
   { href: "/categorias", label: "Categorias", icon: Tag },
 ];
 

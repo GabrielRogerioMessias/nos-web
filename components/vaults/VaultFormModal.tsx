@@ -5,6 +5,8 @@ import { X } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import { createVault, updateVault, type VaultRequest, type VaultResponse } from "@/lib/vaults";
+import { getAccounts } from "@/lib/accounts";
+import type { AccountResponse } from "@/types/dashboard";
 
 // ─── catálogo ─────────────────────────────────────────────────────────────────
 
@@ -56,12 +58,31 @@ export function VaultFormModal({ vault, onClose, onSuccess }: Props) {
   const isEdit = !!vault;
 
   const [name, setName] = useState(vault?.name ?? "");
-  const [description, setDescription] = useState(vault?.description ?? "");
   const [color, setColor] = useState(vault?.color ?? COLORS[4]);
   const [icon, setIcon] = useState<string>(vault?.icon ?? "PiggyBank");
   const [vaultType, setVaultType] = useState<VaultRequest["vaultType"]>(vault?.vaultType ?? "GENERAL");
+  const [accountId, setAccountId] = useState<string>(vault?.account?.id ?? "");
+  const [accounts, setAccounts] = useState<AccountResponse[]>([]);
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState<string>();
+  const [accountError, setAccountError] = useState<string>();
+
+  // Sincroniza campos quando vault muda (modo edição)
+  useEffect(() => {
+    setName(vault?.name ?? "");
+    setColor(vault?.color ?? COLORS[4]);
+    setIcon(vault?.icon ?? "PiggyBank");
+    setVaultType(vault?.vaultType ?? "GENERAL");
+    setAccountId(vault?.account?.id ?? "");
+    setNameError(undefined);
+    setAccountError(undefined);
+  }, [vault?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    getAccounts()
+      .then((list) => setAccounts(list.filter((a) => a.active)))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -75,11 +96,12 @@ export function VaultFormModal({ vault, onClose, onSuccess }: Props) {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) { setNameError("Nome obrigatório."); return; }
+    if (!accountId) { setAccountError("Selecione a conta de rendimento."); return; }
 
     const payload: VaultRequest = {
       name: trimmed,
       vaultType,
-      description: description.trim() || undefined,
+      accountId,
       color,
       icon,
     };
@@ -150,18 +172,31 @@ export function VaultFormModal({ vault, onClose, onSuccess }: Props) {
             </select>
           </div>
 
-          {/* descrição */}
+          {/* conta de rendimento */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm text-zinc-600 dark:text-zinc-400">
-              Descrição <span className="text-zinc-400 dark:text-zinc-500">(opcional)</span>
+              Conta de rendimento
             </label>
-            <input
-              type="text"
-              placeholder="Ex: Para imprevistos"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-600 dark:focus:border-zinc-500"
-            />
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">
+              Onde o dinheiro vai ficar guardado fisicamente.
+            </p>
+            <select
+              value={accountId}
+              onChange={(e) => { setAccountId(e.target.value); if (accountError) setAccountError(undefined); }}
+              className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:text-zinc-50 dark:focus:border-zinc-500 dark:[color-scheme:dark] ${
+                accountError
+                  ? "border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40"
+                  : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
+              }`}
+            >
+              <option value="">Selecionar conta...</option>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.bankName ? `${a.bankName} — ${a.name}` : a.name}
+                </option>
+              ))}
+            </select>
+            {accountError && <p className="text-xs text-red-400">{accountError}</p>}
           </div>
 
           {/* paleta de cores */}
@@ -227,9 +262,6 @@ export function VaultFormModal({ vault, onClose, onSuccess }: Props) {
               <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                 {name || "Nome do cofre"}
               </p>
-              {description && (
-                <p className="text-xs text-zinc-400 dark:text-zinc-500">{description}</p>
-              )}
             </div>
           </div>
 
@@ -245,7 +277,7 @@ export function VaultFormModal({ vault, onClose, onSuccess }: Props) {
             </button>
             <button
               type="submit"
-              disabled={saving || !name.trim()}
+              disabled={saving || !name.trim() || !accountId}
               className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
               {saving ? "Salvando..." : isEdit ? "Salvar alterações" : "Criar cofre"}

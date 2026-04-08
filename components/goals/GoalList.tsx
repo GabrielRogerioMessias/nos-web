@@ -214,7 +214,7 @@ function GoalCard({ goal, onEdit, onDelete, onAchieve, onDeposit, onWithdraw, on
             />
           </div>
 
-          {/* nome + badge */}
+          {/* nome + badge + conta */}
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 line-clamp-1">
@@ -226,9 +226,9 @@ function GoalCard({ goal, onEdit, onDelete, onAchieve, onDeposit, onWithdraw, on
                 </span>
               )}
             </div>
-            {goal.description && (
+            {goal.vault?.account && (
               <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500 line-clamp-1">
-                {goal.description}
+                🏦 {goal.vault.account.bankName || goal.vault.account.name}
               </p>
             )}
           </div>

@@ -6,6 +6,8 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import * as LucideIcons from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import type { GoalRequest, GoalResponse } from "@/types/goals";
+import { getAccounts } from "@/lib/accounts";
+import type { AccountResponse } from "@/types/dashboard";
 
 // ─── catálogo ─────────────────────────────────────────────────────────────────
 
@@ -52,15 +54,17 @@ interface FormState {
 interface FieldErrors {
   name?: string;
   targetAmount?: string;
+  accountId?: string;
 }
 
-function validate(values: FormState): FieldErrors {
+function validate(values: FormState, accountId: string): FieldErrors {
   const errors: FieldErrors = {};
   if (!values.name.trim()) errors.name = "O nome da meta é obrigatório.";
   const amount = parseFloat(values.targetAmount);
   if (!values.targetAmount || isNaN(amount) || amount <= 0) {
     errors.targetAmount = "O valor alvo deve ser maior que zero.";
   }
+  if (!accountId) errors.accountId = "Selecione a conta de rendimento.";
   return errors;
 }
 
@@ -81,8 +85,16 @@ export function GoalForm({ editing, onSave, onCancel }: GoalFormProps) {
   });
   const [color, setColor] = useState(editing?.color ?? COLORS[6]);
   const [icon, setIcon] = useState<string>(editing?.icon ?? "Target");
+  const [accountId, setAccountId] = useState<string>(editing?.vault?.account?.id ?? "");
+  const [accounts, setAccounts] = useState<AccountResponse[]>([]);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getAccounts()
+      .then((list) => setAccounts(list.filter((a) => a.active)))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (editing) {
@@ -96,10 +108,12 @@ export function GoalForm({ editing, onSave, onCancel }: GoalFormProps) {
       });
       setColor(editing.color ?? COLORS[6]);
       setIcon(editing.icon ?? "Target");
+      setAccountId(editing.vault?.account?.id ?? "");
     } else {
       setValues({ name: "", description: "", targetAmount: "", targetDate: "", monthlyContribution: "", yieldRatePercent: "" });
       setColor(COLORS[6]);
       setIcon("Target");
+      setAccountId("");
     }
     setFieldErrors({});
   }, [editing]);
@@ -112,13 +126,13 @@ export function GoalForm({ editing, onSave, onCancel }: GoalFormProps) {
   }
 
   function handleBlur(field: keyof FieldErrors) {
-    const errs = validate(values);
+    const errs = validate(values, accountId);
     if (errs[field]) setFieldErrors((prev) => ({ ...prev, [field]: errs[field] }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const errs = validate(values);
+    const errs = validate(values, accountId);
     if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
 
     const payload: GoalRequest = {
@@ -130,6 +144,7 @@ export function GoalForm({ editing, onSave, onCancel }: GoalFormProps) {
       yieldRatePercent: values.yieldRatePercent ? parseFloat(values.yieldRatePercent) : undefined,
       icon,
       color,
+      accountId,
     };
 
     setSaving(true);
@@ -142,7 +157,7 @@ export function GoalForm({ editing, onSave, onCancel }: GoalFormProps) {
     }
   }
 
-  const isValid = Object.keys(validate(values)).length === 0;
+  const isValid = Object.keys(validate(values, accountId)).length === 0;
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
@@ -173,6 +188,33 @@ export function GoalForm({ editing, onSave, onCancel }: GoalFormProps) {
         onBlur={() => handleBlur("targetAmount")}
         error={fieldErrors.targetAmount}
       />
+
+      {/* conta de rendimento */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm text-zinc-600 dark:text-zinc-400">
+          Conta de rendimento
+        </label>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500">
+          Onde o dinheiro vai ficar guardado fisicamente.
+        </p>
+        <select
+          value={accountId}
+          onChange={(e) => { setAccountId(e.target.value); if (fieldErrors.accountId) setFieldErrors((p) => ({ ...p, accountId: undefined })); }}
+          className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:text-zinc-50 dark:focus:border-zinc-500 dark:[color-scheme:dark] ${
+            fieldErrors.accountId
+              ? "border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40"
+              : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
+          }`}
+        >
+          <option value="">Selecionar conta...</option>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.bankName ? `${a.bankName} — ${a.name}` : a.name}
+            </option>
+          ))}
+        </select>
+        {fieldErrors.accountId && <p className="text-xs text-red-400">{fieldErrors.accountId}</p>}
+      </div>
 
       <DatePicker
         label="Data alvo (opcional)"

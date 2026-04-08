@@ -1,6 +1,7 @@
 export interface GoalVault {
   id: string;
   currentBalance: number;
+  account?: { id: string; name: string; bankName: string; color: string };
 }
 
 export interface GoalProjection {
@@ -34,6 +35,7 @@ export interface GoalRequest {
   yieldRatePercent?: number;
   icon?: string;
   color?: string;
+  accountId: string;
 }
 
 export interface PageResponseGoal {

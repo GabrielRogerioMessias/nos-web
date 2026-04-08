@@ -1,7 +1,10 @@
 export interface BalanceResponse {
   totalAccounts: number;
   totalVaults: number;
+  totalGeneralVaults: number;
+  totalInvoiceVaults: number;
   availableBalance: number;
+  netWorth: number;
 }
 
 export interface MonthSummary {
@@ -22,6 +25,8 @@ export interface AccountResponse {
   bankName?: string;
   initialBalance: number | null;
   currentBalance: number | null;
+  retainedInVaults: number;
+  totalBalance: number;
   color: string;
   active: boolean;
 }

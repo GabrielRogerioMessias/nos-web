@@ -3,18 +3,18 @@ import { api } from "./api";
 export interface VaultResponse {
   id: string;
   name: string;
-  description?: string;
   color?: string;
   icon?: string;
   currentBalance: number;
   active: boolean;
   vaultType?: "GENERAL" | "GOAL" | "INVOICE";
+  account?: { id: string; name: string; bankName: string; color: string };
 }
 
 export interface VaultRequest {
   name: string;
   vaultType: "GENERAL" | "GOAL" | "INVOICE";
-  description?: string;
+  accountId: string;
   color?: string;
   icon?: string;
 }

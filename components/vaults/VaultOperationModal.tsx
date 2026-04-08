@@ -44,7 +44,7 @@ interface Props {
 
 export function VaultOperationModal({ vault, type, onClose, onSuccess, onError }: Props) {
   const [amountDisplay, setAmountDisplay] = useState("");
-  const [accountId, setAccountId] = useState("");
+  const [accountId, setAccountId] = useState(vault.account?.id ?? "");
   const [description, setDescription] = useState("");
   const [accounts, setAccounts] = useState<AccountResponse[]>([]);
   const [saving, setSaving] = useState(false);
@@ -54,12 +54,16 @@ export function VaultOperationModal({ vault, type, onClose, onSuccess, onError }
   const containerLabel = vault.vaultType === "GOAL" ? "meta" : "cofre";
 
   useEffect(() => {
+    // No resgate, a conta já é fixa (conta pai do cofre) — só precisa carregar para o depósito
+    if (!isDeposit) return;
     getAccounts().then((list) => {
       const active = list.filter((a) => a.active);
       setAccounts(active);
-      if (active.length > 0) setAccountId(active[0].id);
+      // Pré-seleciona a conta pai do cofre se disponível, senão a primeira
+      const defaultId = vault.account?.id ?? (active[0]?.id ?? "");
+      setAccountId(defaultId);
     });
-  }, []);
+  }, [isDeposit, vault.account?.id]);
 
   // fecha com ESC
   useEffect(() => {
@@ -176,34 +180,44 @@ export function VaultOperationModal({ vault, type, onClose, onSuccess, onError }
           </div>
 
           {/* conta */}
-          <div className="flex flex-col gap-1.5">
-            <Select
-              label={`Conta ${isDeposit ? "de débito" : "de crédito"}`}
-              value={accountId}
-              onChange={(e) => {
-                setAccountId(e.target.value);
-                if (errors.accountId) setErrors((p) => ({ ...p, accountId: undefined }));
-              }}
-              options={
-                accounts.length === 0
-                  ? [{ value: "", label: "Nenhuma conta ativa" }]
-                  : accounts.map((acc) => ({ value: acc.id, label: acc.name }))
-              }
-              error={errors.accountId}
-            />
-
-            {/* saldo disponível + aviso contextual */}
-            {selectedAccount && (
-              <div className="flex items-center justify-between rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-800/50">
-                <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                  {isDeposit ? "Saldo disponível para débito" : "Conta de crédito"}
-                </p>
+          {isDeposit ? (
+            <div className="flex flex-col gap-1.5">
+              <Select
+                label="Conta de débito"
+                value={accountId}
+                onChange={(e) => {
+                  setAccountId(e.target.value);
+                  if (errors.accountId) setErrors((p) => ({ ...p, accountId: undefined }));
+                }}
+                options={
+                  accounts.length === 0
+                    ? [{ value: "", label: "Nenhuma conta ativa" }]
+                    : accounts.map((acc) => ({ value: acc.id, label: acc.name }))
+                }
+                error={errors.accountId}
+              />
+              {selectedAccount && (
+                <div className="flex items-center justify-between rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-800/50">
+                  <p className="text-xs text-zinc-400 dark:text-zinc-500">Saldo disponível</p>
+                  <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                    {formatCurrency(Number(selectedAccount.currentBalance ?? 0))}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Resgate: conta destino é sempre a conta pai — apenas informativo */
+            vault.account && (
+              <div className="flex items-center justify-between rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-800/50">
+                <p className="text-xs text-zinc-400 dark:text-zinc-500">Destino do resgate</p>
                 <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  {formatCurrency(Number(selectedAccount.currentBalance ?? 0))}
+                  {vault.account.bankName
+                    ? `${vault.account.bankName} — ${vault.account.name}`
+                    : vault.account.name}
                 </p>
               </div>
-            )}
-          </div>
+            )
+          )}
 
           {/* descrição opcional */}
           <div className="flex flex-col gap-1.5">

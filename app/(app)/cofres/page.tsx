@@ -36,30 +36,27 @@ function DynamicIcon({ name, ...props }: { name: string } & LucideProps) {
 
 function VaultCardSkeleton() {
   return (
-    <div className="flex w-full flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="flex flex-col gap-6 p-6">
-        {/* cabeçalho */}
-        <div className="flex items-start justify-between">
+    <div className="flex w-full flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="flex flex-col gap-4 p-5">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" />
+            <div className="h-9 w-9 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" />
             <div>
-              <div className="h-5 w-28 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
-              <div className="mt-1.5 h-3 w-16 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+              <div className="h-4 w-28 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
+              <div className="mt-1.5 h-3 w-20 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
             </div>
           </div>
-          <div className="h-6 w-6 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+          <div className="h-5 w-5 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
         </div>
-        {/* saldo */}
-        <div>
-          <div className="h-3 w-20 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
-          <div className="mt-2 h-9 w-36 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-700" />
-          <div className="mt-2 h-3 w-48 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+        <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800">
+          <div className="h-3 w-16 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+          <div className="mt-2 h-7 w-32 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
         </div>
       </div>
-      <div className="flex border-t border-zinc-200 dark:border-zinc-800">
-        <div className="h-12 flex-1 animate-pulse bg-zinc-50 dark:bg-zinc-900/50" />
-        <div className="h-12 flex-1 animate-pulse bg-zinc-50 dark:bg-zinc-900/50" />
-        <div className="h-12 flex-1 animate-pulse bg-zinc-50 dark:bg-zinc-900/50" />
+      <div className="flex border-t border-zinc-100 dark:border-zinc-800">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={`h-10 flex-1 animate-pulse bg-zinc-50 dark:bg-zinc-800/40 ${i < 2 ? "border-r border-zinc-100 dark:border-zinc-800" : ""}`} />
+        ))}
       </div>
     </div>
   );
@@ -87,53 +84,64 @@ function VaultCard({
   const iconName = vault.icon ?? "PiggyBank";
 
   return (
-    <div className="flex w-full flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      {/* corpo */}
-      <div className="flex flex-col gap-6 p-6">
+    <div className="flex w-full flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
 
-        {/* ── cabeçalho: ícone + nome à esq, menu à dir ── */}
+      {/* ── corpo ── */}
+      <div className="flex flex-col gap-4 p-5">
+
+        {/* cabeçalho: ícone + nome + menu */}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex min-w-0 items-center gap-3">
             <div
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
-              style={{ backgroundColor: `${cardColor}20` }}
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
+              style={{ backgroundColor: `${cardColor}18` }}
             >
-              <DynamicIcon name={iconName} size={20} style={{ color: cardColor }} />
+              <DynamicIcon name={iconName} size={17} style={{ color: cardColor }} />
             </div>
-            <div>
-              <p className="line-clamp-2 text-base font-bold leading-snug text-zinc-900 dark:text-zinc-50">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
                 {vault.name}
               </p>
-              <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500">
-                {vault.vaultType === "INVOICE" ? "Reserva de Fatura" : "Livre"}
-              </p>
+              <div className="mt-0.5 flex items-center gap-1.5">
+                <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                  {vault.vaultType === "INVOICE" ? "Fatura" : "Livre"}
+                </span>
+                {vault.account && (
+                  <>
+                    <span className="text-zinc-300 dark:text-zinc-700">·</span>
+                    <span className="truncate text-xs text-zinc-400 dark:text-zinc-500">
+                      {vault.account.bankName || vault.account.name}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* kebab menu */}
+          {/* kebab */}
           <div className="relative flex-shrink-0">
             <button
               onClick={() => setMenuOpen((v) => !v)}
               className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
             >
-              <MoreHorizontal size={15} />
+              <MoreHorizontal size={14} />
             </button>
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-8 z-20 min-w-[144px] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                <div className="absolute right-0 top-8 z-20 min-w-[136px] overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
                   <button
                     onClick={() => { setMenuOpen(false); onEdit(); }}
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800"
                   >
-                    <Pencil size={13} /> Editar
+                    <Pencil size={12} /> Editar
                   </button>
                   <div className="border-t border-zinc-100 dark:border-zinc-800" />
                   <button
                     onClick={() => { setMenuOpen(false); onDelete(); }}
-                    className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
                   >
-                    <Trash2 size={13} /> Excluir
+                    <Trash2 size={12} /> Excluir
                   </button>
                 </div>
               </>
@@ -141,25 +149,19 @@ function VaultCard({
           </div>
         </div>
 
-        {/* ── saldo herói ── */}
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1">
-            Saldo Atual
-          </p>
-          <p className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
+        {/* saldo */}
+        <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800">
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">Saldo guardado</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white">
             {formatCurrency(vault.currentBalance)}
-          </p>
-          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-            {vault.vaultType === "INVOICE"
-              ? "Cofre reservado para pagamento de fatura."
-              : "Reserva de uso livre."}
           </p>
         </div>
       </div>
 
-      {/* ── link ver extrato ── */}
-      <div className="flex w-full justify-end px-6 mb-3">
+      {/* ── ver extrato ── */}
+      <div className="flex w-full justify-end px-5 pb-3">
         <button
+          type="button"
           onClick={onStatement}
           className="flex items-center gap-1 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
         >
@@ -168,26 +170,26 @@ function VaultCard({
       </div>
 
       {/* ── rodapé de ações ── */}
-      <div className="flex w-full items-center border-t border-zinc-200 dark:border-zinc-800">
+      <div className="flex w-full items-center border-t border-zinc-100 dark:border-zinc-800">
         <button
           onClick={onDeposit}
-          className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100 border-r border-zinc-200 dark:border-zinc-800"
+          className="flex flex-1 items-center justify-center gap-1.5 h-10 text-xs text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200 border-r border-zinc-100 dark:border-zinc-800"
         >
-          <ArrowDownCircle size={14} />
+          <ArrowDownCircle size={13} />
           Guardar
         </button>
         <button
           onClick={onWithdraw}
-          className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100 border-r border-zinc-200 dark:border-zinc-800"
+          className="flex flex-1 items-center justify-center gap-1.5 h-10 text-xs text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200 border-r border-zinc-100 dark:border-zinc-800"
         >
-          <ArrowUpCircle size={14} />
+          <ArrowUpCircle size={13} />
           Resgatar
         </button>
         <button
           onClick={onReconcile}
-          className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
+          className="flex flex-1 items-center justify-center gap-1.5 h-10 text-xs text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200"
         >
-          <Sparkles size={14} />
+          <Sparkles size={13} />
           Rendimentos
         </button>
       </div>

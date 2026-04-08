@@ -16,11 +16,12 @@ function resolveColor(color: string | undefined | null, index: number): string {
 }
 
 function formatCurrencyFull(value: number): string {
+  const safe = Number.isFinite(value) ? value : 0;
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
     minimumFractionDigits: 2,
-  }).format(value);
+  }).format(safe);
 }
 
 interface TooltipItem extends CategoryExpense {
@@ -55,7 +56,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
       </div>
       <p className="mt-1 text-xs" style={{ color: "#a1a1aa" }}>
         {formatCurrencyFull(item.totalAmount)}{" "}
-        <span style={{ color: "#71717a" }}>· {item.percentage.toFixed(1)}%</span>
+        <span style={{ color: "#71717a" }}>· {(Number.isFinite(item.percentage) ? item.percentage : 0).toFixed(1)}%</span>
       </p>
     </div>
   );
@@ -105,7 +106,9 @@ interface Props {
 }
 
 export function ExpenseByCategoryChart({ categories, month }: Props) {
-  const safe = Array.isArray(categories) ? categories : [];
+  const safe = (Array.isArray(categories) ? categories : []).filter(
+    (c) => Number.isFinite(c.totalAmount) && c.totalAmount > 0
+  );
 
   if (safe.length === 0) {
     return <EmptyDonut month={month} />;
@@ -168,7 +171,7 @@ export function ExpenseByCategoryChart({ categories, month }: Props) {
                 {formatCurrencyFull(c.totalAmount)}
               </span>
               <span className="w-8 text-right text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500">
-                {c.percentage.toFixed(0)}%
+                {(Number.isFinite(c.percentage) ? c.percentage : 0).toFixed(0)}%
               </span>
             </div>
           </li>
@@ -202,16 +205,19 @@ interface ListProps {
 }
 
 function formatCurrencyCompact(value: number): string {
+  const safe = Number.isFinite(value) ? value : 0;
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
     notation: "compact",
     maximumFractionDigits: 1,
-  }).format(value);
+  }).format(safe);
 }
 
 export function ExpenseByCategoryList({ categories, month }: ListProps) {
-  const safe = Array.isArray(categories) ? categories : [];
+  const safe = (Array.isArray(categories) ? categories : []).filter(
+    (c) => Number.isFinite(c.totalAmount) && c.totalAmount > 0
+  );
 
   if (safe.length === 0) {
     return (
@@ -240,7 +246,10 @@ export function ExpenseByCategoryList({ categories, month }: ListProps) {
       <ul className="flex flex-col gap-4">
         {displayed.map((cat, i) => {
           const color = resolveColor(cat.color, i);
-          const pct = Math.min(100, Math.round(cat.percentage));
+          const rawPct = Number.isFinite(cat.percentage) && cat.percentage > 0
+            ? cat.percentage
+            : total > 0 ? (cat.totalAmount / total) * 100 : 0;
+          const pct = Math.min(100, Math.round(rawPct));
           return (
             <li key={cat.categoryId}>
               <div className="mb-1.5 flex items-center justify-between gap-2">

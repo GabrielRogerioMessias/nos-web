@@ -314,7 +314,18 @@ export default function HomePage() {
     loadFixed();
   }, []);
 
-  // recarrega transações recentes quando uma transação é criada/editada
+  // carrega summary sempre que o mês muda
+  const loadSummary = useCallback(async (month: string) => {
+    setSummary(undefined); // volta ao skeleton
+    const data = await getMonthlySummary(month).catch(() => null);
+    setSummary(data);
+  }, []);
+
+  useEffect(() => {
+    loadSummary(selectedMonth);
+  }, [selectedMonth, loadSummary]);
+
+  // recarrega todos os dados quando uma transação é criada/editada/excluída
   useEffect(() => {
     async function onUpdated() {
       const [tx, cf, bal] = await Promise.all([
@@ -330,22 +341,10 @@ export default function HomePage() {
         );
         setRecentTx(sorted.slice(0, 5));
       }
-      // também recarrega o summary do mês atual
       loadSummary(selectedMonth);
     }
     window.addEventListener("transaction-updated", onUpdated);
     return () => window.removeEventListener("transaction-updated", onUpdated);
-  }, [selectedMonth]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // carrega summary sempre que o mês muda
-  const loadSummary = useCallback(async (month: string) => {
-    setSummary(undefined); // volta ao skeleton
-    const data = await getMonthlySummary(month).catch(() => null);
-    setSummary(data);
-  }, []);
-
-  useEffect(() => {
-    loadSummary(selectedMonth);
   }, [selectedMonth, loadSummary]);
 
   // métricas do mês (derivadas do summary)
@@ -409,8 +408,8 @@ export default function HomePage() {
         ) : (
           <MetricCard
             label="Patrimônio"
-            subtitle="Contas e Cofres"
-            value={(balance?.totalAccounts ?? 0) + (balance?.totalVaults ?? 0)}
+            subtitle="Contas + Cofres Livres"
+            value={balance?.netWorth ?? 0}
             valueColor="text-zinc-900 dark:text-white"
             iconBg="bg-zinc-100 dark:bg-zinc-800"
             icon={<PiggyBank size={16} className="text-zinc-500 dark:text-zinc-400" />}

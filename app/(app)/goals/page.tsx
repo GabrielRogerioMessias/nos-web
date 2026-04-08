@@ -20,6 +20,7 @@ function goalToVault(goal: GoalResponse): VaultResponse {
     currentBalance: goal.vault!.currentBalance,
     active: true,
     vaultType: "GOAL",
+    account: goal.vault!.account,
   };
 }
 

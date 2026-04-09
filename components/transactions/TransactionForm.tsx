@@ -532,7 +532,7 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
 
         {/* 3. VALOR */}
         <Input
-          label="Valor"
+          label={isInstallment ? "Valor Total da Compra" : "Valor"}
           type="text"
           inputMode="numeric"
           placeholder="R$ 0,00"

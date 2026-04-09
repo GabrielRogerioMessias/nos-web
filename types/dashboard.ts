@@ -144,6 +144,7 @@ export interface InvoiceTransaction {
   amount: number;
   transactionDate: string;
   category?: { name: string };
+  type?: string;
 }
 
 export interface InvoiceResponse {

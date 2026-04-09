@@ -4,7 +4,23 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ChevronRight, Pencil, Trash2, MoreHorizontal } from "lucide-react";
 import type { CreditCardResponse, InvoiceResponse } from "@/types/dashboard";
+import { getInvoice } from "@/lib/credit-cards";
 import { InvoicePaymentModal } from "@/components/credit-cards/InvoicePaymentModal";
+
+function nextMonthISO(current: string): string {
+  const [y, m] = current.split("-").map(Number);
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+}
+
+function currentMonthISO() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(iso: string): string {
+  const [y, m] = iso.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleString("pt-BR", { month: "long" });
+}
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -180,7 +196,7 @@ interface CreditCardItemProps {
   invoiceLoading: boolean;
   onEdit: (card: CreditCardResponse) => void;
   onDelete: (id: string) => Promise<void>;
-  onPaymentSuccess: () => void;
+  onPaymentSuccess: (cardId: string) => void;
   onPaymentError: (msg: string) => void;
 }
 
@@ -188,6 +204,22 @@ function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete, onPay
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [payingInvoice, setPayingInvoice] = useState(false);
+
+  // próxima fatura — carregada sob demanda quando a fatura atual está paga
+  const [nextInvoice, setNextInvoice] = useState<InvoiceResponse | null>(null);
+  const [nextInvoiceLoading, setNextInvoiceLoading] = useState(false);
+
+  const isInvoicePaid = invoice?.paid ?? false;
+
+  useEffect(() => {
+    if (!isInvoicePaid) { setNextInvoice(null); return; }
+    const month = nextMonthISO(currentMonthISO());
+    setNextInvoiceLoading(true);
+    getInvoice(card.id, month)
+      .then(setNextInvoice)
+      .catch(() => setNextInvoice(null))
+      .finally(() => setNextInvoiceLoading(false));
+  }, [isInvoicePaid, card.id]);
 
   async function handleConfirmDelete() {
     setDeleting(true);
@@ -202,12 +234,10 @@ function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete, onPay
   const accentColor = card.color ?? "#a1a1aa";
   const fatura = invoice?.totalAmount ?? 0;
   const limite = card.creditLimit ?? 0;
-  const disponivel = Math.max(0, limite - fatura);
-  const pct = limite > 0 ? (fatura / limite) * 100 : 0;
+  // quando paga, o back já libera o limite — disponivel reflete o estado real do cartão
+  const disponivel = Math.max(0, limite - (isInvoicePaid ? 0 : fatura));
+  const pct = limite > 0 && !isInvoicePaid ? (fatura / limite) * 100 : 0;
   const isOver = pct > 100;
-
-  // fatura paga
-  const isInvoicePaid = invoice?.paid ?? false;
 
   // fatura fechada: hoje >= closingDate, há valor e não foi paga
   const isClosed = !!invoice?.closingDate && fatura > 0 && !isInvoicePaid &&
@@ -269,17 +299,32 @@ function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete, onPay
         {/* ── fatura: herói ── */}
         <div>
           <p className={`text-xs font-medium uppercase tracking-widest ${
-            isClosed
+            isClosed && !isInvoicePaid
               ? "text-amber-600 dark:text-amber-500"
               : "text-zinc-400 dark:text-zinc-500"
           }`}>
-            {isClosed ? "Fatura fechada" : "Fatura atual"}
+            {isClosed && !isInvoicePaid ? "Fatura fechada" : "Fatura atual"}
           </p>
           {invoiceLoading ? (
             <div className="mt-2 h-9 w-36 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
+          ) : isInvoicePaid ? (
+            <p className="mt-1.5 text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
+              {formatCurrency(0)}
+            </p>
           ) : (
             <p className="mt-1.5 text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
               {formatCurrency(fatura)}
+            </p>
+          )}
+
+          {/* subtítulo da próxima fatura */}
+          {isInvoicePaid && (
+            <p className="mt-1.5 text-xs text-zinc-400 dark:text-zinc-500">
+              {nextInvoiceLoading
+                ? "Carregando próxima fatura…"
+                : nextInvoice
+                ? `Próxima fatura (${monthLabel(nextMonthISO(currentMonthISO()))}): ${formatCurrency(nextInvoice.totalAmount)}`
+                : `Próxima fatura (${monthLabel(nextMonthISO(currentMonthISO()))}): ${formatCurrency(0)}`}
             </p>
           )}
         </div>
@@ -328,21 +373,15 @@ function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete, onPay
         </span>
       </div>
 
-      {/* ── rodapé de ação/status da fatura ── */}
-      {!confirming && (isInvoicePaid || isClosed) && (
+      {/* ── rodapé: botão "Pagar fatura" apenas quando fechada e não paga ── */}
+      {!confirming && isClosed && (
         <div className="border-t border-zinc-100 px-6 pb-4 pt-4 dark:border-zinc-800">
-          {isInvoicePaid ? (
-            <div className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 py-2 text-xs font-medium text-emerald-600 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:text-emerald-400">
-              Fatura paga
-            </div>
-          ) : (
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPayingInvoice(true); }}
-              className="w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              Pagar fatura
-            </button>
-          )}
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPayingInvoice(true); }}
+            className="w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Pagar fatura
+          </button>
         </div>
       )}
 
@@ -364,7 +403,7 @@ function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete, onPay
           card={card}
           invoice={invoice}
           onClose={() => setPayingInvoice(false)}
-          onSuccess={() => { setPayingInvoice(false); onPaymentSuccess(); }}
+          onSuccess={() => { setPayingInvoice(false); onPaymentSuccess(card.id); }}
           onError={(msg) => { setPayingInvoice(false); onPaymentError(msg); }}
         />
       )}
@@ -384,7 +423,7 @@ interface CreditCardListProps {
   items: CardWithInvoice[];
   onEdit: (card: CreditCardResponse) => void;
   onDelete: (id: string) => Promise<void>;
-  onPaymentSuccess: () => void;
+  onPaymentSuccess: (cardId: string) => void;
   onPaymentError: (msg: string) => void;
 }
 

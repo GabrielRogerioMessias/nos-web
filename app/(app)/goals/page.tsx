@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { getGoals, createGoal, updateGoal, deleteGoal, achieveGoal } from "@/lib/goals";
+import { getAccounts } from "@/lib/accounts";
 import type { VaultResponse } from "@/lib/vaults";
 import type { GoalResponse, GoalRequest } from "@/types/goals";
+import type { AccountResponse } from "@/types/dashboard";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
 import { GoalList, GoalListSkeleton } from "@/components/goals/GoalList";
 import { GoalFormModal } from "@/components/goals/GoalFormModal";
@@ -30,6 +32,7 @@ let toastIdCounter = 0;
 
 export default function GoalsPage() {
   const [goals, setGoals] = useState<GoalResponse[] | null>(null);
+  const [accounts, setAccounts] = useState<AccountResponse[]>([]);
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState<GoalResponse | null>(null);
   const [depositGoal, setDepositGoal] = useState<GoalResponse | null>(null);
@@ -56,9 +59,21 @@ export default function GoalsPage() {
     }
   }, []);
 
-  useEffect(() => { loadGoals(); }, [loadGoals]);
+  useEffect(() => {
+    loadGoals();
+    getAccounts()
+      .then((list) => setAccounts(list.filter((a) => a.active)))
+      .catch(() => {});
+  }, [loadGoals]);
 
-  function openNew() { setEditing(null); setSlideOpen(true); }
+  function openNew() {
+    if (accounts.length === 0) {
+      addToast("Cadastre pelo menos uma Conta Bancária antes de criar uma meta.", "error");
+      return;
+    }
+    setEditing(null);
+    setSlideOpen(true);
+  }
   function openEdit(goal: GoalResponse) { setEditing(goal); setSlideOpen(true); }
   function closeModal() { setSlideOpen(false); setEditing(null); }
 
@@ -141,6 +156,7 @@ export default function GoalsPage() {
             onDeposit={(goal) => setDepositGoal(goal)}
             onWithdraw={(goal) => setWithdrawGoal(goal)}
             onStatement={(goal) => setStatementGoal(goal)}
+            onCreateNew={openNew}
           />
         )}
       </div>

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { MoreHorizontal, Pencil, Power, Trash2, Archive } from "lucide-react";
+import { MoreHorizontal, Pencil, Power, Trash2, Archive, Landmark, Plus } from "lucide-react";
 import type { AccountResponse } from "@/types/dashboard";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -262,7 +262,26 @@ function AccountCard({ account, onEdit, onToggle, onDelete }: AccountCardProps) 
 
 // ─── empty state ──────────────────────────────────────────────────────────────
 
-function EmptyState({ message }: { message: string }) {
+function EmptyState({ message, onCreateNew }: { message: string; onCreateNew?: () => void }) {
+  if (onCreateNew) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-200 py-20 text-center dark:border-zinc-800">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+          <Landmark size={24} className="text-zinc-400 dark:text-zinc-500" />
+        </div>
+        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Nenhuma conta ainda</p>
+        <p className="mt-1 max-w-xs text-xs text-zinc-400 dark:text-zinc-500">
+          Adicione suas contas bancárias, carteiras ou investimentos para começar a controlar seu dinheiro.
+        </p>
+        <button
+          onClick={onCreateNew}
+          className="mt-6 flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          <Plus size={14} /> Adicionar minha primeira conta
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-16 text-center dark:border-zinc-800 dark:bg-zinc-950">
       <p className="text-sm text-zinc-400 dark:text-zinc-500">{message}</p>
@@ -281,9 +300,10 @@ interface AccountListProps {
   onEdit: (account: AccountResponse) => void;
   onToggle: (account: AccountResponse) => void;
   onDelete: (account: AccountResponse) => void;
+  onCreateNew?: () => void;
 }
 
-export function AccountList({ accounts, onEdit, onToggle, onDelete }: AccountListProps) {
+export function AccountList({ accounts, onEdit, onToggle, onDelete, onCreateNew }: AccountListProps) {
   const [tab, setTab] = useState<Tab>("active");
 
   const active = accounts.filter((a) => a.active);
@@ -344,6 +364,7 @@ export function AccountList({ accounts, onEdit, onToggle, onDelete }: AccountLis
               ? 'Nenhuma conta ativa. Clique em "Nova conta" para começar.'
               : "Nenhuma conta arquivada."
           }
+          onCreateNew={tab === "active" ? onCreateNew : undefined}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">

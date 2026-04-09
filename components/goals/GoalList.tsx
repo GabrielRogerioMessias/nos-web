@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   MoreHorizontal, Pencil, Trash2, CheckCircle2,
   ArrowDownCircle, ArrowUpCircle, Sparkles, ChevronRight,
-  AlertTriangle,
+  AlertTriangle, Target, Plus,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideProps } from "lucide-react";
@@ -338,14 +338,28 @@ interface GoalListProps {
   onDeposit: (goal: GoalResponse) => void;
   onWithdraw: (goal: GoalResponse) => void;
   onStatement: (goal: GoalResponse) => void;
+  onCreateNew?: () => void;
 }
 
-export function GoalList({ goals, onEdit, onDelete, onAchieve, onDeposit, onWithdraw, onStatement }: GoalListProps) {
+export function GoalList({ goals, onEdit, onDelete, onAchieve, onDeposit, onWithdraw, onStatement, onCreateNew }: GoalListProps) {
   if (goals.length === 0) {
     return (
-      <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-16 text-center dark:border-zinc-800 dark:bg-zinc-950">
-        <p className="text-sm text-zinc-400 dark:text-zinc-500">Nenhuma meta cadastrada.</p>
-        <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-600">Clique em "Nova meta" para começar.</p>
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-200 py-20 text-center dark:border-zinc-800">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+          <Target size={24} className="text-zinc-400 dark:text-zinc-500" />
+        </div>
+        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Nenhuma meta ainda</p>
+        <p className="mt-1 max-w-xs text-xs text-zinc-400 dark:text-zinc-500">
+          Defina objetivos financeiros e acompanhe seu progresso — como comprar um carro, fazer uma viagem ou criar uma reserva.
+        </p>
+        {onCreateNew && (
+          <button
+            onClick={onCreateNew}
+            className="mt-6 flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            <Plus size={14} /> Criar minha primeira meta
+          </button>
+        )}
       </div>
     );
   }

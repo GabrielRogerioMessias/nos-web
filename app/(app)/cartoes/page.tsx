@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import {
   getCreditCards,
+  getCreditCard,
   createCreditCard,
   updateCreditCard,
   deleteCreditCard,
@@ -118,6 +119,29 @@ export default function CartoesPage() {
     }
   }
 
+  // após pagar a fatura de um cartão específico:
+  // 1. rebusca o cartão para atualizar o limite disponível
+  // 2. rebusca a fatura do mês atual (virá com paid=true) — o card decide como renderizar
+  async function handlePaymentSuccess(cardId: string) {
+    addToast("Fatura paga com sucesso!");
+
+    // rebusca cartão em paralelo para atualizar limite livre imediatamente
+    getCreditCard(cardId)
+      .then((updated) => setCards((prev) => prev ? prev.map((c) => c.id === updated.id ? updated : c) : prev))
+      .catch(() => {/* silencia */});
+
+    const currentMonth = currentMonthISO();
+    setInvoiceLoading((prev) => ({ ...prev, [cardId]: true }));
+    try {
+      const inv = await getInvoice(cardId, currentMonth);
+      setInvoices((prev) => ({ ...prev, [cardId]: inv }));
+    } catch {
+      // mantém a fatura anterior em caso de falha
+    } finally {
+      setInvoiceLoading((prev) => ({ ...prev, [cardId]: false }));
+    }
+  }
+
   async function handleDelete(id: string) {
     try {
       await deleteCreditCard(id);
@@ -168,7 +192,7 @@ export default function CartoesPage() {
             items={items}
             onEdit={openEdit}
             onDelete={handleDelete}
-            onPaymentSuccess={() => { addToast("Fatura paga com sucesso!"); loadCards(); }}
+            onPaymentSuccess={handlePaymentSuccess}
             onPaymentError={(msg) => addToast(msg, "error")}
           />
         )}

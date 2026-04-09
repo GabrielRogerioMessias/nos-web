@@ -309,8 +309,6 @@ export default function ExtratoPage() {
             editing={editing}
             onSave={handleSave}
             onSuccess={() => {
-              closeSlide();
-              addToast("Registrado com sucesso.");
               loadTransactions(page, filters, selectedMonth);
             }}
             onCancel={closeSlide}

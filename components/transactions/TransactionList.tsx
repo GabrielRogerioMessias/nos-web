@@ -104,7 +104,9 @@ function TransactionRow({ tx, readOnly = false, onEdit, onDeleteRequest }: Trans
 
   // trava contábil por fatura paga (independente do readOnly global de conta arquivada)
   const isInvoiceLocked = tx.invoicePaid === true;
-  const isLocked = readOnly || isInvoiceLocked;
+  // transações de cartão de crédito são somente-leitura no extrato (edição exige lógica de parcelas)
+  const isCreditCardTx = !!tx.creditCard;
+  const isLocked = readOnly || isInvoiceLocked || isCreditCardTx;
 
   const amountColor = isExpense
     ? "text-zinc-500 dark:text-zinc-400"

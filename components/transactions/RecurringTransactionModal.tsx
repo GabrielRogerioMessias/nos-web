@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Calendar, RefreshCw } from "lucide-react";
+import { X, Calendar, RefreshCw, AlertTriangle } from "lucide-react";
 import { createRecurringTransaction } from "@/lib/recurring-transactions";
 import { getAccounts } from "@/lib/accounts";
 import { getCategories } from "@/lib/transactions";
+import { getVaults, withdrawFromVault, type VaultResponse } from "@/lib/vaults";
 import type { AccountResponse, CategoryResponse, RecurringFrequency } from "@/types/dashboard";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -80,6 +81,13 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
   const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState<string>();
 
+  // intervenção de saldo insuficiente (só quando payFirstInstallmentNow)
+  const [intervention, setIntervention] = useState<{
+    shortfall: number;
+    vaults: VaultResponse[];
+    selectedVaultId: string;
+  } | null>(null);
+
   // load accounts + categories
   useEffect(() => {
     getAccounts()
@@ -114,26 +122,82 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
     return Object.keys(errs).length === 0;
   }
 
+  // efetiva a criação da assinatura (chamada após decisão de intervenção ou fluxo normal)
+  async function commitRecurring() {
+    await createRecurringTransaction({
+      type,
+      description: description.trim(),
+      amount: parseCurrency(amountMasked),
+      categoryId,
+      accountId,
+      frequency,
+      startDate,
+      payFirstInstallmentNow,
+    });
+    window.dispatchEvent(new CustomEvent("transaction-updated"));
+    onSuccess();
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
     setSaving(true);
     setApiError(undefined);
     try {
-      await createRecurringTransaction({
-        type,
-        description: description.trim(),
-        amount: parseCurrency(amountMasked),
-        categoryId,
-        accountId,
-        frequency,
-        startDate,
-        payFirstInstallmentNow,
-      });
-      onSuccess();
+      const amount = parseCurrency(amountMasked);
+
+      // verifica saldo apenas quando "pagar agora" está marcado e é despesa
+      if (payFirstInstallmentNow && type === "EXPENSE" && accountId) {
+        const account = accounts.find((a) => a.id === accountId);
+        const balance = account?.currentBalance ?? 0;
+        if (amount > balance) {
+          const shortfall = amount - balance;
+          const allVaults = await getVaults().catch(() => [] as VaultResponse[]);
+          const eligible = allVaults.filter(
+            (v) => v.vaultType === "GENERAL" && v.account?.id === accountId && v.currentBalance >= shortfall
+          );
+          setIntervention({ shortfall, vaults: eligible, selectedVaultId: eligible[0]?.id ?? "" });
+          return; // aguarda decisão do usuário no modal
+        }
+      }
+
+      await commitRecurring();
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
       setApiError(axiosErr.response?.data?.message ?? "Erro ao criar assinatura.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Opção A: resgatar do cofre e criar assinatura
+  async function handleVaultRescue() {
+    if (!intervention) return;
+    setSaving(true);
+    try {
+      await withdrawFromVault(intervention.selectedVaultId, intervention.shortfall, accountId);
+      await commitRecurring();
+      setIntervention(null);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      setApiError(axiosErr.response?.data?.message ?? "Erro ao processar.");
+      setIntervention(null);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Opção B: cheque especial — cria normalmente mesmo com saldo negativo
+  async function handleOverdraft() {
+    if (!intervention) return;
+    setSaving(true);
+    try {
+      await commitRecurring();
+      setIntervention(null);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      setApiError(axiosErr.response?.data?.message ?? "Erro ao criar assinatura.");
+      setIntervention(null);
     } finally {
       setSaving(false);
     }
@@ -386,6 +450,75 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
           </div>
         </form>
       </div>
+
+      {/* ── modal de intervenção: saldo insuficiente ── */}
+      {intervention && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => !saving && setIntervention(null)} />
+          <div className="fixed inset-x-4 top-1/2 z-[60] mx-auto max-w-sm -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/40">
+                  <AlertTriangle size={17} className="text-amber-500" />
+                </div>
+                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Saldo insuficiente</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIntervention(null)}
+                disabled={saving}
+                className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 disabled:opacity-40 dark:hover:bg-zinc-800"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <p className="mb-5 text-sm text-zinc-500 dark:text-zinc-400">
+              Para pagar agora, sua conta ficará negativa em{" "}
+              <span className="font-medium text-zinc-900 dark:text-zinc-50">
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(intervention.shortfall)}
+              </span>
+              . Como deseja prosseguir?
+            </p>
+
+            <div className="flex flex-col gap-3">
+              {intervention.vaults.length > 0 && (
+                <div className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                  <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Resgatar de um cofre</p>
+                  <select
+                    value={intervention.selectedVaultId}
+                    onChange={(e) => setIntervention((prev) => prev ? { ...prev, selectedVaultId: e.target.value } : prev)}
+                    className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:[color-scheme:dark]"
+                  >
+                    {intervention.vaults.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} — {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v.currentBalance)}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleVaultRescue}
+                    disabled={saving || !intervention.selectedVaultId}
+                    className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  >
+                    {saving ? "Processando..." : "Resgatar do Cofre e Criar Assinatura"}
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleOverdraft}
+                disabled={saving}
+                className="w-full rounded-lg border border-zinc-200 px-4 py-2.5 text-sm text-zinc-600 transition-colors hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              >
+                Continuar mesmo assim (Cheque Especial)
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

@@ -85,16 +85,16 @@ export function CategoryFormModal({ editing, defaultType = "EXPENSE", onSave, on
     <>
       <div className="fixed inset-0 z-50 bg-black/20" onClick={!saving ? onClose : undefined} />
 
-      <div className="fixed inset-x-4 top-1/2 z-50 mx-auto max-w-md -translate-y-1/2 rounded-2xl bg-white p-6 shadow-lg">
+      <div className="fixed inset-x-4 top-1/2 z-50 mx-auto max-w-md -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
         {/* cabeçalho */}
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-zinc-900">
+          <h2 className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
             {editing ? "Editar categoria" : "Nova categoria"}
           </h2>
           <button
             onClick={onClose}
             disabled={saving}
-            className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 disabled:opacity-40"
+            className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 disabled:opacity-40 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
           >
             <X size={16} />
           </button>
@@ -113,8 +113,8 @@ export function CategoryFormModal({ editing, defaultType = "EXPENSE", onSave, on
 
           {/* tipo */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-600">Tipo</label>
-            <div className="flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5">
+            <label className="text-sm text-zinc-600 dark:text-zinc-400">Tipo</label>
+            <div className="flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-700 dark:bg-zinc-800">
               {(["EXPENSE", "INCOME"] as const).map((t) => (
                 <button
                   key={t}
@@ -123,8 +123,8 @@ export function CategoryFormModal({ editing, defaultType = "EXPENSE", onSave, on
                   onClick={() => setType(t)}
                   className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
                     type === t
-                      ? "bg-white text-zinc-900"
-                      : "text-zinc-400 hover:text-zinc-600 disabled:opacity-60"
+                      ? "bg-white text-zinc-900 dark:bg-zinc-700 dark:text-zinc-50"
+                      : "text-zinc-400 hover:text-zinc-600 disabled:opacity-60 dark:text-zinc-500 dark:hover:text-zinc-300"
                   }`}
                 >
                   {t === "EXPENSE" ? "Despesa" : "Receita"}
@@ -135,14 +135,16 @@ export function CategoryFormModal({ editing, defaultType = "EXPENSE", onSave, on
 
           {/* paleta de cores */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm text-zinc-600">Cor</label>
+            <label className="text-sm text-zinc-600 dark:text-zinc-400">Cor</label>
             <div className="flex flex-wrap gap-2.5">
               {COLORS.map((hex) => (
                 <button
                   key={hex}
                   type="button"
                   onClick={() => setColor(hex)}
-                  className="relative h-7 w-7 rounded-full transition-transform hover:scale-110 focus:outline-none"
+                  className={`relative h-7 w-7 rounded-full transition-transform hover:scale-110 focus:outline-none ${
+                    color === hex ? "ring-2 ring-white ring-offset-2 ring-offset-zinc-900" : ""
+                  }`}
                   style={{ backgroundColor: hex }}
                   aria-label={hex}
                 >
@@ -158,8 +160,8 @@ export function CategoryFormModal({ editing, defaultType = "EXPENSE", onSave, on
 
           {/* galeria de ícones */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm text-zinc-600">Ícone</label>
-            <div className="grid grid-cols-8 gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+            <label className="text-sm text-zinc-600 dark:text-zinc-400">Ícone</label>
+            <div className="grid grid-cols-8 gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800">
               {ICON_NAMES.map((name) => {
                 const selected = icon === name;
                 return (
@@ -171,7 +173,7 @@ export function CategoryFormModal({ editing, defaultType = "EXPENSE", onSave, on
                     className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all ${
                       selected
                         ? "scale-110 shadow-sm"
-                        : "hover:bg-zinc-200"
+                        : "hover:bg-zinc-200 dark:hover:bg-zinc-700"
                     }`}
                     style={selected ? { backgroundColor: color } : {}}
                   >
@@ -187,7 +189,7 @@ export function CategoryFormModal({ editing, defaultType = "EXPENSE", onSave, on
           </div>
 
           {/* preview */}
-          <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+          <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800">
             <div
               className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg"
               style={{ backgroundColor: color }}
@@ -195,8 +197,8 @@ export function CategoryFormModal({ editing, defaultType = "EXPENSE", onSave, on
               <DynamicIcon name={icon} size={16} color="#fff" />
             </div>
             <div>
-              <p className="text-sm font-medium text-zinc-900">{name || "Nome da categoria"}</p>
-              <p className="text-xs text-zinc-400">{type === "EXPENSE" ? "Despesa" : "Receita"}</p>
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{name || "Nome da categoria"}</p>
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">{type === "EXPENSE" ? "Despesa" : "Receita"}</p>
             </div>
           </div>
 
@@ -206,14 +208,14 @@ export function CategoryFormModal({ editing, defaultType = "EXPENSE", onSave, on
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100 disabled:opacity-40"
+              className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving || !name.trim()}
-              className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
               {saving ? "Salvando..." : editing ? "Salvar alterações" : "Criar categoria"}
             </button>

@@ -167,6 +167,7 @@ export default function ContasPage() {
             onEdit={openEdit}
             onToggle={handleToggle}
             onDelete={handleDelete}
+            onCreateNew={openNew}
           />
         )}
       </div>

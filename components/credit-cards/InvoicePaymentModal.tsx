@@ -69,33 +69,34 @@ export function InvoicePaymentModal({ card, invoice, onClose, onSuccess, onError
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // carrega contas e cofres de fatura
+  // carrega contas e cofres de fatura — smart default
   useEffect(() => {
     Promise.all([
       getAccounts().catch(() => [] as AccountResponse[]),
       getVaults().catch(() => [] as VaultResponse[]),
     ]).then(([accs, vts]) => {
       const activeAccounts = accs.filter((a) => a.active);
-      const invoiceVaults = vts.filter((v) => v.vaultType === "INVOICE");
+      const invoiceVaults = vts.filter((v) => v.vaultType === "INVOICE" && v.active);
       setAccounts(activeAccounts);
       setVaults(invoiceVaults);
-      // pré-seleciona primeiro item disponível
-      if (activeAccounts.length > 0) setSourceId(activeAccounts[0].id);
+
+      // smart default: preferir cofre de fatura com saldo
+      const vaultWithBalance = invoiceVaults.find((v) => v.currentBalance > 0);
+      if (vaultWithBalance) {
+        setSourceType("vault");
+        setSourceId(vaultWithBalance.id);
+      } else {
+        // fallback: conta com maior saldo corrente
+        const bestAccount = activeAccounts.reduce<AccountResponse | null>(
+          (best, a) => (!best || (a.currentBalance ?? 0) > (best.currentBalance ?? 0) ? a : best),
+          null
+        );
+        if (bestAccount) setSourceId(bestAccount.id);
+      }
       setLoading(false);
     });
   }, []);
 
-  // quando muda tipo de fonte, pré-seleciona primeiro item
-  useEffect(() => {
-    if (sourceType === "account" && accounts.length > 0) {
-      setSourceId(accounts[0].id);
-    } else if (sourceType === "vault" && vaults.length > 0) {
-      setSourceId(vaults[0].id);
-    } else {
-      setSourceId("");
-    }
-    setErrors((p) => ({ ...p, source: undefined }));
-  }, [sourceType, accounts, vaults]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,7 +114,10 @@ export function InvoicePaymentModal({ card, invoice, onClose, onSuccess, onError
         month: invoice.month,
         amount,
         paymentDate: todayISO(),
-        ...(sourceType === "account" ? { accountId: sourceId } : { vaultId: sourceId }),
+        // higienização: nunca enviar string vazia — Spring falha ao converter "" → UUID
+        ...(sourceType === "account"
+          ? { accountId: sourceId || undefined }
+          : { vaultId: sourceId || undefined }),
       });
       onSuccess();
     } catch (err: unknown) {
@@ -195,7 +199,11 @@ export function InvoicePaymentModal({ card, invoice, onClose, onSuccess, onError
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => setSourceType("account")}
+                onClick={() => {
+                  setSourceType("account");
+                  setSourceId(accounts[0]?.id ?? "");
+                  setErrors((p) => ({ ...p, source: undefined }));
+                }}
                 className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
                   sourceType === "account"
                     ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
@@ -206,7 +214,11 @@ export function InvoicePaymentModal({ card, invoice, onClose, onSuccess, onError
               </button>
               <button
                 type="button"
-                onClick={() => setSourceType("vault")}
+                onClick={() => {
+                  setSourceType("vault");
+                  setSourceId(vaults[0]?.id ?? "");
+                  setErrors((p) => ({ ...p, source: undefined }));
+                }}
                 disabled={vaults.length === 0}
                 className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                   sourceType === "vault"

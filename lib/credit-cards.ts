@@ -6,6 +6,11 @@ export async function getCreditCards(): Promise<CreditCardResponse[]> {
   return data;
 }
 
+export async function getCreditCard(id: string): Promise<CreditCardResponse> {
+  const { data } = await api.get<CreditCardResponse>(`/credit-cards/${id}`);
+  return data;
+}
+
 export async function createCreditCard(payload: CreditCardRequest): Promise<CreditCardResponse> {
   const { data } = await api.post<CreditCardResponse>("/credit-cards", payload);
   return data;

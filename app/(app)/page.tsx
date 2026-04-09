@@ -210,8 +210,9 @@ function RecentTransactions({ transactions }: { transactions: TransactionRespons
 // ─── saldo livre card ─────────────────────────────────────────────────────────
 
 function FreeCashCard({ data }: { data: CashflowResponse }) {
+  const invoices = data.committedInvoices ?? 0;
   const saved = data.savedForInvoices ?? 0;
-  const netInvoices = Math.max(0, data.committedInvoices - saved);
+  const pending = Math.max(0, invoices - saved);
   const isFreeNegative = data.freeBalance < 0;
 
   return (
@@ -222,26 +223,34 @@ function FreeCashCard({ data }: { data: CashflowResponse }) {
       <p className={`mt-3 text-xl font-bold tabular-nums tracking-tight ${isFreeNegative ? "text-red-500" : "text-zinc-900 dark:text-white"}`}>
         {formatCurrency(data.freeBalance)}
       </p>
-      <div className="mt-4 flex flex-col gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+
+      {/* detalhamento didático */}
+      <div className="mt-4 flex flex-col gap-1.5 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50">
+        {/* linha 1 — faturas total */}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-zinc-400 dark:text-zinc-500">(-) Contas fixas</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Faturas (Total)</span>
           <span className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
-            – {formatCurrency(data.committedRecurring)}
+            – {formatCurrency(invoices)}
           </span>
         </div>
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <span className="text-xs text-zinc-400 dark:text-zinc-500">(-) Faturas</span>
-            {saved > 0 && (
-              <p className="text-xs text-emerald-500 dark:text-emerald-400">
-                {formatCurrency(saved)} no cofre
-              </p>
-            )}
+
+        {/* linha 2 — saldo reservado em cofre */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-emerald-600 dark:text-emerald-500">Saldo Reservado em Cofre</span>
+          <span className="text-xs tabular-nums text-emerald-600 dark:text-emerald-500">
+            + {formatCurrency(saved)}
+          </span>
+        </div>
+
+        {/* linha 3 — fatura pendente (só se > 0) */}
+        {pending > 0 && (
+          <div className="flex items-center justify-between border-t border-zinc-200 pt-1.5 dark:border-zinc-700">
+            <span className="text-xs font-medium text-red-500 dark:text-red-400">Fatura Pendente</span>
+            <span className="text-xs font-medium tabular-nums text-red-500 dark:text-red-400">
+              – {formatCurrency(pending)}
+            </span>
           </div>
-          <span className="flex-shrink-0 text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
-            – {formatCurrency(netInvoices)}
-          </span>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -407,7 +416,7 @@ export default function HomePage() {
           <MetricCard
             label="Patrimônio"
             subtitle="Contas + Cofres Livres"
-            value={balance?.netWorth ?? 0}
+            value={balance?.netWorth || balance?.availableBalance || 0}
             valueColor="text-zinc-900 dark:text-white"
             iconBg="bg-zinc-100 dark:bg-zinc-800"
             icon={<PiggyBank size={16} className="text-zinc-500 dark:text-zinc-400" />}

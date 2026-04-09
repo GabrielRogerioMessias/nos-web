@@ -5,6 +5,7 @@ import { Plus, PiggyBank, ArrowDownCircle, ArrowUpCircle, Sparkles, MoreHorizont
 import * as LucideIcons from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import { getVaults, deleteVault, type VaultResponse } from "@/lib/vaults";
+import { getAccounts } from "@/lib/accounts";
 import { VaultFormModal } from "@/components/vaults/VaultFormModal";
 import { VaultOperationModal } from "@/components/vaults/VaultOperationModal";
 import { VaultStatementSheet } from "@/components/vaults/VaultStatementSheet";
@@ -201,6 +202,7 @@ let toastIdCounter = 0;
 
 export default function CofresPage() {
   const [vaults, setVaults] = useState<VaultResponse[] | undefined>(undefined);
+  const [accounts, setAccounts] = useState<string[]>([]); // só precisamos saber se há alguma
   const [modal, setModal] = useState<Modal | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
@@ -219,7 +221,20 @@ export default function CofresPage() {
       .catch(() => setVaults([]));
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    getAccounts()
+      .then((list) => setAccounts(list.filter((a) => a.active).map((a) => a.id)))
+      .catch(() => {});
+  }, [load]);
+
+  function openCreate() {
+    if (accounts.length === 0) {
+      addToast("Cadastre pelo menos uma Conta Bancária antes de criar um cofre.", "error");
+      return;
+    }
+    setModal({ type: "create" });
+  }
 
   async function handleDelete(vault: VaultResponse) {
     if (!confirm(`Excluir o cofre "${vault.name}"? Esta ação não pode ser desfeita.`)) return;
@@ -246,7 +261,7 @@ export default function CofresPage() {
           )}
         </div>
         <button
-          onClick={() => setModal({ type: "create" })}
+          onClick={openCreate}
           className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           <Plus size={15} />
@@ -269,7 +284,7 @@ export default function CofresPage() {
             Crie um cofre para separar dinheiro para objetivos específicos — como férias, emergências ou um projeto especial.
           </p>
           <button
-            onClick={() => setModal({ type: "create" })}
+            onClick={openCreate}
             className="mt-6 flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             <Plus size={14} /> Criar meu primeiro cofre

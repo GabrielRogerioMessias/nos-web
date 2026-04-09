@@ -89,22 +89,30 @@ interface InvoiceTxRowProps {
 function InvoiceTxRow({ tx, readOnly, onEdit, onDelete }: InvoiceTxRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const isPayment = tx.type === "CREDIT_CARD_PAYMENT";
+
   return (
     <div className="flex items-center justify-between gap-4 px-5 py-4">
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-zinc-900 dark:text-zinc-100">{tx.description}</p>
         <p className="text-xs text-zinc-400 dark:text-zinc-500">
-          {tx.category?.name ?? "—"} · {formatDate(tx.transactionDate)}
+          {isPayment ? "Pagamento recebido" : (tx.category?.name ?? "—")} · {formatDate(tx.transactionDate)}
         </p>
       </div>
 
       <div className="flex flex-shrink-0 items-center gap-2">
-        <span className="text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
-          – {formatCurrency(tx.amount)}
-        </span>
+        {isPayment ? (
+          <span className="text-sm tabular-nums text-emerald-600 dark:text-emerald-400">
+            + {formatCurrency(tx.amount)}
+          </span>
+        ) : (
+          <span className="text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
+            – {formatCurrency(tx.amount)}
+          </span>
+        )}
 
-        {/* menu de ações — oculto em modo leitura */}
-        {!readOnly && (
+        {/* menu de ações — oculto em modo leitura ou para pagamentos */}
+        {!readOnly && !isPayment && (
           <div className="relative">
             <button
               onClick={() => setMenuOpen((v) => !v)}
@@ -187,7 +195,7 @@ function InvoiceContent({ invoice, onPayClick, onEditTx, onDeleteTx }: InvoiceCo
       ) : (
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Compras</p>
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Lançamentos</p>
             {isInvoicePaid && (
               <p className="text-xs text-zinc-400 dark:text-zinc-500">Somente leitura</p>
             )}

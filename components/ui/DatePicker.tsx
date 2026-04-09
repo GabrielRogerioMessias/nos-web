@@ -39,7 +39,9 @@ export function DatePicker({
   disabled,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const selected = isoToDate(value ?? "");
 
@@ -53,6 +55,22 @@ export function DatePicker({
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, []);
+
+  // calcula posição fixed para o popover não ser cortado por overflow:hidden do modal
+  function openPopover() {
+    if (disabled) return;
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const popoverH = 320; // altura estimada do calendário
+      if (spaceBelow >= popoverH) {
+        setPopoverStyle({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+      } else {
+        setPopoverStyle({ bottom: window.innerHeight - rect.top + 6, left: rect.left, width: rect.width });
+      }
+    }
+    setOpen((v) => !v);
+  }
 
   function handleSelect(day: Date | undefined) {
     onChange(day ? dateToIso(day) : undefined);
@@ -72,9 +90,10 @@ export function DatePicker({
 
       {/* trigger */}
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
-        onClick={() => !disabled && setOpen((v) => !v)}
+        onClick={openPopover}
         className={`flex w-full items-center justify-between rounded-lg border px-3.5 py-2.5 text-sm outline-none transition-colors
           ${open ? "border-zinc-400 dark:border-zinc-500" : "border-zinc-200 dark:border-zinc-700"}
           ${error ? "border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40" : "bg-white dark:bg-zinc-900"}
@@ -96,9 +115,12 @@ export function DatePicker({
 
       {error && <p className="text-xs text-red-400">{error}</p>}
 
-      {/* popover */}
+      {/* popover — fixed para não ser cortado por overflow:hidden de modais */}
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 rounded-xl border border-zinc-200 bg-white p-3 shadow-md dark:border-zinc-700 dark:bg-zinc-900">
+        <div
+          className="fixed z-[200] min-w-[280px] rounded-xl border border-zinc-200 bg-white p-3 shadow-md dark:border-zinc-700 dark:bg-zinc-900"
+          style={popoverStyle}
+        >
           <DayPicker
             mode="single"
             selected={selected}

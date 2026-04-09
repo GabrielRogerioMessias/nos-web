@@ -4,8 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CreditCard,
   MoreHorizontal,
-  Pencil,
-  Power,
+  Plus,
   RefreshCw,
   Trash2,
   TrendingDown,
@@ -23,6 +22,7 @@ import {
   type InstallmentPlan,
 } from "@/lib/credit-cards";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
+import { RecurringTransactionModal } from "@/components/transactions/RecurringTransactionModal";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -415,6 +415,9 @@ export default function AssinaturasPage() {
   const [installments, setInstallments] = useState<InstallmentPlan[] | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
+  // modal nova assinatura
+  const [showNewModal, setShowNewModal] = useState(false);
+
   // modais de confirmação
   const [deletingRecurring, setDeletingRecurring] = useState<RecurringTransaction | null>(null);
   const [deletingInstallment, setDeletingInstallment] = useState<InstallmentPlan | null>(null);
@@ -496,11 +499,21 @@ export default function AssinaturasPage() {
       <div className="flex w-full flex-col gap-6 pb-24 md:pb-8">
 
         {/* cabeçalho */}
-        <div>
-          <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Assinaturas e Parcelas</h1>
-          <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
-            Transações recorrentes e parcelamentos ativos
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Assinaturas e Parcelas</h1>
+            <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+              Transações recorrentes e parcelamentos ativos
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowNewModal(true)}
+            className="flex flex-shrink-0 items-center gap-1.5 rounded-xl bg-zinc-900 px-3.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          >
+            <Plus size={15} />
+            Nova assinatura
+          </button>
         </div>
 
         {/* abas */}
@@ -547,7 +560,7 @@ export default function AssinaturasPage() {
             <EmptyState
               icon={<RefreshCw size={22} className="text-zinc-400 dark:text-zinc-500" />}
               title="Nenhuma assinatura cadastrada"
-              subtitle="Crie transações recorrentes pelo botão Nova Transação."
+              subtitle='Use o botão "Nova assinatura" para registrar Netflix, Spotify, aluguel e outros compromissos recorrentes.'
             />
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -608,6 +621,19 @@ export default function AssinaturasPage() {
           loading={deleteLoading}
           onConfirm={handleDeleteInstallment}
           onCancel={() => setDeletingInstallment(null)}
+        />
+      )}
+
+      {/* modal: nova assinatura */}
+      {showNewModal && (
+        <RecurringTransactionModal
+          onClose={() => setShowNewModal(false)}
+          onSuccess={() => {
+            setShowNewModal(false);
+            loadRecurring();
+            addToast("Assinatura criada com sucesso!");
+            window.dispatchEvent(new CustomEvent("transaction-updated"));
+          }}
         />
       )}
 

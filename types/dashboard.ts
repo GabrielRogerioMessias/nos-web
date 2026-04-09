@@ -95,7 +95,15 @@ export interface TransactionRequest {
 
 // ─── Recurring Transactions ───────────────────────────────────────────────────
 
-export type RecurringFrequency = "MONTHLY" | "YEARLY";
+export type RecurringFrequency =
+  | "DAILY"
+  | "WEEKLY"
+  | "BIWEEKLY"
+  | "MONTHLY"
+  | "BIMONTHLY"
+  | "QUARTERLY"
+  | "SEMIANNUAL"
+  | "ANNUAL";
 
 export interface RecurringTransactionRequest {
   description: string;
@@ -105,6 +113,7 @@ export interface RecurringTransactionRequest {
   accountId?: string;
   frequency: RecurringFrequency;
   startDate: string;
+  payFirstInstallmentNow?: boolean;
 }
 
 // ─── Credit Cards ─────────────────────────────────────────────────────────────

@@ -7,9 +7,9 @@ import { ColorSelect } from "@/components/ui/ColorSelect";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { getCategories } from "@/lib/transactions";
 import { getAccounts } from "@/lib/accounts";
-import { Building2, CreditCard as CreditCardIcon, RefreshCw, Layers } from "lucide-react";
+import { Building2, CreditCard as CreditCardIcon, Layers, AlertTriangle, X } from "lucide-react";
 import { getCreditCards, createInstallmentPlan } from "@/lib/credit-cards";
-import { createRecurringTransaction } from "@/lib/recurring-transactions";
+import { getVaults, withdrawFromVault, type VaultResponse } from "@/lib/vaults";
 import type {
   TransactionType,
   TransactionRequest,
@@ -17,7 +17,6 @@ import type {
   CategoryResponse,
   AccountResponse,
   CreditCardResponse,
-  RecurringFrequency,
 } from "@/types/dashboard";
 
 type Tab = "EXPENSE" | "INCOME" | "TRANSFER";
@@ -41,18 +40,12 @@ interface FieldErrors {
   transactionDate?: string;
   creditCardId?: string;
   totalInstallments?: string;
-  frequency?: string;
 }
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "EXPENSE", label: "Despesa" },
   { key: "INCOME", label: "Receita" },
   { key: "TRANSFER", label: "Transferência" },
-];
-
-const FREQUENCY_OPTIONS: { value: RecurringFrequency; label: string }[] = [
-  { value: "MONTHLY", label: "Mensal" },
-  { value: "YEARLY", label: "Anual" },
 ];
 
 function todayISO() {
@@ -95,8 +88,6 @@ function validate(
   creditCardId: string,
   isInstallment: boolean,
   totalInstallments: string,
-  isRecurring: boolean,
-  frequency: RecurringFrequency | "",
   isEditingCardExpense: boolean,
 ): FieldErrors {
   const errors: FieldErrors = {};
@@ -139,10 +130,6 @@ function validate(
 
   if (!values.transactionDate) errors.transactionDate = "Data obrigatória.";
 
-  if (isRecurring && !frequency) {
-    errors.frequency = "Selecione a frequência.";
-  }
-
   return errors;
 }
 
@@ -161,8 +148,6 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
   const [creditCardId, setCreditCardId] = useState("");
   const [isInstallment, setIsInstallment] = useState(false);
   const [totalInstallments, setTotalInstallments] = useState("");
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [frequency, setFrequency] = useState<RecurringFrequency | "">("");
 
   const [values, setValues] = useState<FormState>({
     description: editing?.description ?? "",
@@ -178,6 +163,14 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
   const [creditCards, setCreditCards] = useState<CreditCardResponse[]>([]);
   const [saving, setSaving] = useState(false);
   const [loadingCats, setLoadingCats] = useState(false);
+
+  // ─── intervenção de saldo insuficiente ────────────────────────────────────
+  const [intervention, setIntervention] = useState<{
+    pendingPayload: TransactionRequest;
+    shortfall: number;
+    vaults: VaultResponse[];
+    selectedVaultId: string;
+  } | null>(null);
 
   // busca categorias ao montar ou ao trocar aba
   useEffect(() => {
@@ -199,14 +192,6 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
     if (editing) return;
     setTab(next);
     setFieldErrors({});
-    if (next === "TRANSFER") {
-      setPaymentMethod("account");
-      setCreditCardId("");
-      setIsInstallment(false);
-      setTotalInstallments("");
-      setIsRecurring(false);
-      setFrequency("");
-    }
     if (next !== "EXPENSE") {
       setPaymentMethod("account");
       setCreditCardId("");
@@ -238,31 +223,22 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
     if (fieldErrors.amount) setFieldErrors((prev) => ({ ...prev, amount: undefined }));
   }
 
+  // executa a transação (após decisão do modal ou fluxo normal)
+  async function commitTransaction(payload: TransactionRequest) {
+    await onSave(payload);
+    window.dispatchEvent(new CustomEvent("transaction-updated"));
+    onSuccess?.();
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const errs = validate(values, tab, paymentMethod, creditCardId, isInstallment, totalInstallments, isRecurring, frequency, isEditingCardExpense);
+    const errs = validate(values, tab, paymentMethod, creditCardId, isInstallment, totalInstallments, isEditingCardExpense);
     if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
 
     const amount = parseCurrency(values.amountDisplay);
 
     setSaving(true);
     try {
-      // Cenário: transação recorrente
-      if (isRecurring && tab !== "TRANSFER") {
-        await createRecurringTransaction({
-          description: values.description.trim(),
-          amount,
-          type: tab as TransactionType,
-          categoryId: values.categoryId,
-          accountId: values.accountId || undefined,
-          frequency: frequency as RecurringFrequency,
-          startDate: values.transactionDate,
-        });
-        window.dispatchEvent(new CustomEvent("transaction-updated"));
-        onSuccess?.();
-        return;
-      }
-
       // Cenário: cartão parcelado
       if (tab === "EXPENSE" && paymentMethod === "credit_card" && isInstallment) {
         await createInstallmentPlan({
@@ -314,8 +290,36 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
               transactionDate: values.transactionDate,
             };
 
-      await onSave(payload);
-      window.dispatchEvent(new CustomEvent("transaction-updated"));
+      // ── intervenção de saldo insuficiente ────────────────────────────────
+      // só para despesas via conta, criação nova
+      if (
+        tab === "EXPENSE" &&
+        paymentMethod === "account" &&
+        !editing &&
+        values.accountId
+      ) {
+        const account = accounts.find((a) => a.id === values.accountId);
+        const balance = account?.currentBalance ?? 0;
+        if (amount > balance) {
+          const shortfall = amount - balance;
+          const allVaults = await getVaults().catch(() => [] as VaultResponse[]);
+          const eligibleVaults = allVaults.filter(
+            (v) =>
+              v.vaultType === "GENERAL" &&
+              v.account?.id === values.accountId &&
+              v.currentBalance >= shortfall
+          );
+          setIntervention({
+            pendingPayload: payload,
+            shortfall,
+            vaults: eligibleVaults,
+            selectedVaultId: eligibleVaults[0]?.id ?? "",
+          });
+          return;
+        }
+      }
+
+      await commitTransaction(payload);
     } catch {
       // erro tratado no pai
     } finally {
@@ -323,22 +327,53 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
     }
   }
 
-  // despesa de cartão de crédito na edição: account é null pois a transação pertence a um cartão
+  // Opção A: resgatar do cofre e pagar
+  async function handleVaultRescue() {
+    if (!intervention) return;
+    setSaving(true);
+    try {
+      await withdrawFromVault(
+        intervention.selectedVaultId,
+        intervention.shortfall,
+        intervention.pendingPayload.accountId!,
+      );
+      await commitTransaction(intervention.pendingPayload);
+      setIntervention(null);
+    } catch {
+      // erro tratado no pai
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Opção B: cheque especial — prossegue normalmente
+  async function handleOverdraft() {
+    if (!intervention) return;
+    setSaving(true);
+    try {
+      await commitTransaction(intervention.pendingPayload);
+      setIntervention(null);
+    } catch {
+      // erro tratado no pai
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // despesa de cartão de crédito na edição
   const isEditingCardExpense = !!editing && editing.type === "EXPENSE" && editing.account === null;
 
   const accountOptions = accounts.map((a) => ({ value: a.id, label: a.name, color: a.color }));
   const creditCardOptions = creditCards.map((c) => ({ value: c.id, label: c.name, color: c.color }));
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
-  const frequencyOptions = FREQUENCY_OPTIONS.map((f) => ({ value: f.value, label: f.label }));
 
-  const showRecurringOption = tab !== "TRANSFER" && !editing;
-  const showCardToggle = tab === "EXPENSE" && !isRecurring && !editing;
+  const showCardToggle = tab === "EXPENSE" && !editing;
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex h-full flex-col">
       <div className="flex flex-1 flex-col gap-5 overflow-y-auto pb-4">
 
-        {/* 1. TIPO — controle primário */}
+        {/* 1. TIPO */}
         <div className="mb-2 flex rounded-xl border border-zinc-200 bg-zinc-100 p-1 dark:border-zinc-700 dark:bg-zinc-800">
           {TABS.map(({ key, label }) => (
             <button
@@ -357,9 +392,7 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
           ))}
         </div>
 
-        {/* 2. ORIGEM DO DINHEIRO */}
-
-        {/* radio forma de pagamento — só para despesas não-recorrentes */}
+        {/* 2. FORMA DE PAGAMENTO — só para despesas */}
         {showCardToggle && (
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
@@ -497,17 +530,6 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
           </>
         )}
 
-        {/* conta para despesa recorrente */}
-        {tab === "EXPENSE" && isRecurring && (
-          <ColorSelect
-            label="Conta"
-            options={accountOptions}
-            value={values.accountId}
-            onChange={(v) => handleChange("accountId", v)}
-            error={fieldErrors.accountId}
-          />
-        )}
-
         {/* 3. VALOR */}
         <Input
           label="Valor"
@@ -552,54 +574,76 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
           onChange={(e) => handleChange("description", e.target.value)}
           error={fieldErrors.description}
         />
-
-        {/* 7. RECORRÊNCIA */}
-        {showRecurringOption && (
-          <div className="flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                const next = !isRecurring;
-                setIsRecurring(next);
-                if (!next) {
-                  setFrequency("");
-                  setFieldErrors((prev) => ({ ...prev, frequency: undefined }));
-                } else {
-                  // recorrente é mutuamente exclusivo com parcelamento e cartão
-                  setPaymentMethod("account");
-                  setCreditCardId("");
-                  setIsInstallment(false);
-                  setTotalInstallments("");
-                }
-              }}
-              className={`flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-sm transition-colors ${
-                isRecurring
-                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                  : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 hover:text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-300"
-              }`}
-            >
-              <RefreshCw size={15} className="flex-shrink-0" />
-              <span className="flex-1 text-left">Repetir esta transação</span>
-              {isRecurring && (
-                <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs dark:bg-zinc-900/20">ativo</span>
-              )}
-            </button>
-
-            {isRecurring && (
-              <Select
-                label="Frequência"
-                options={frequencyOptions}
-                value={frequency}
-                onChange={(e) => {
-                  setFrequency(e.target.value as RecurringFrequency);
-                  if (fieldErrors.frequency) setFieldErrors((prev) => ({ ...prev, frequency: undefined }));
-                }}
-                error={fieldErrors.frequency}
-              />
-            )}
-          </div>
-        )}
       </div>
+
+      {/* ── modal de intervenção: saldo insuficiente ─────────────────────── */}
+      {intervention && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/40" onClick={() => !saving && setIntervention(null)} />
+          <div className="fixed inset-x-4 top-1/2 z-50 mx-auto max-w-sm -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/40">
+                  <AlertTriangle size={17} className="text-amber-500" />
+                </div>
+                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Saldo insuficiente</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIntervention(null)}
+                disabled={saving}
+                className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 disabled:opacity-40 dark:hover:bg-zinc-800"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <p className="mb-5 text-sm text-zinc-500 dark:text-zinc-400">
+              Sua conta ficará negativa em{" "}
+              <span className="font-medium text-zinc-900 dark:text-zinc-50">
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(intervention.shortfall)}
+              </span>
+              . Como deseja prosseguir?
+            </p>
+
+            <div className="flex flex-col gap-3">
+              {intervention.vaults.length > 0 && (
+                <div className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                  <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Resgatar de um cofre</p>
+                  <select
+                    value={intervention.selectedVaultId}
+                    onChange={(e) => setIntervention((prev) => prev ? { ...prev, selectedVaultId: e.target.value } : prev)}
+                    className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:[color-scheme:dark]"
+                  >
+                    {intervention.vaults.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} — {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v.currentBalance)}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleVaultRescue}
+                    disabled={saving || !intervention.selectedVaultId}
+                    className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  >
+                    {saving ? "Processando..." : "Resgatar do Cofre e Pagar"}
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleOverdraft}
+                disabled={saving}
+                className="w-full rounded-lg border border-zinc-200 px-4 py-2.5 text-sm text-zinc-600 transition-colors hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              >
+                Continuar mesmo assim (Cheque Especial)
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* botões — fixos no rodapé */}
       <div className="sticky bottom-0 mt-auto flex gap-3 border-t border-zinc-100 bg-white pt-4 dark:border-zinc-800 dark:bg-zinc-950">
@@ -615,15 +659,7 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
           disabled={saving}
           className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
-          {saving
-            ? "Salvando..."
-            : editing
-            ? "Salvar alterações"
-            : isRecurring
-            ? "Criar assinatura"
-            : isInstallment
-            ? "Parcelar compra"
-            : "Salvar"}
+          {saving ? "Salvando..." : editing ? "Salvar alterações" : isInstallment ? "Parcelar compra" : "Salvar"}
         </button>
       </div>
     </form>

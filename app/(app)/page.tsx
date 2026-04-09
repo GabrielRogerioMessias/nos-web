@@ -7,7 +7,6 @@ import {
   ChevronRight,
   TrendingUp,
   TrendingDown,
-  Wallet,
   PiggyBank,
   Plus,
 } from "lucide-react";
@@ -31,6 +30,7 @@ import {
   ExpenseByCategoryList,
   ExpenseByCategoryListSkeleton,
 } from "@/components/charts/ExpenseByCategoryChart";
+import { UpcomingPayments } from "@/components/transactions/UpcomingPayments";
 import type { IncomeVsExpenseResponse, TransactionResponse } from "@/types/dashboard";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -350,8 +350,6 @@ export default function HomePage() {
   // métricas do mês (derivadas do summary)
   const totalIncome = summary?.totalIncome ?? 0;
   const totalExpense = summary?.totalExpense ?? 0;
-  const monthBalance = summary?.balance ?? 0;
-  const freeBalance = cashflow?.freeBalance ?? 0;
 
   const isCurrentMonth = selectedMonth === currentMonthIso();
 
@@ -457,6 +455,15 @@ export default function HomePage() {
           <IncomeVsExpenseChart months={performance?.months ?? []} />
         )}
       </div>
+
+      {/* ── próximos vencimentos ─────────────────────────────────────────────── */}
+      <UpcomingPayments
+        onPaid={() => {
+          getCashflow().then((cf) => { if (cf) setCashflow(cf); }).catch(() => {});
+          getBalance().then((bal) => { if (bal) setBalance(bal); }).catch(() => {});
+          loadSummary(selectedMonth);
+        }}
+      />
 
       {/* ── top gastos por categoria + transações recentes — 2 colunas no lg ── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">

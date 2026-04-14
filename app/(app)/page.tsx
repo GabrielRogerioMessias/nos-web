@@ -9,16 +9,17 @@ import {
   TrendingDown,
   PiggyBank,
   Plus,
+  LayoutDashboard,
+  BarChart2,
+  ArrowLeftRight,
 } from "lucide-react";
 import {
-  getBalance,
   getIncomeVsExpense,
   getCashflow,
   getMonthlySummary,
   type CashflowResponse,
   type MonthlySummaryResponse,
 } from "@/lib/dashboard";
-import type { BalanceResponse } from "@/types/dashboard";
 import { getMe } from "@/lib/user";
 import { getTransactions } from "@/lib/transactions";
 import { useTransactionForm } from "@/components/transactions/TransactionContext";
@@ -66,8 +67,8 @@ function monthLabel(iso: string) {
     month: "long",
     year: "numeric",
   });
-  // capitalize first letter
-  return label.charAt(0).toUpperCase() + label.slice(1);
+  // capitaliza só a primeira letra; "de" permanece minúsculo
+  return label.charAt(0).toUpperCase() + label.slice(1).replace(/ De /g, " de ");
 }
 
 function prevMonth(iso: string) {
@@ -132,7 +133,7 @@ interface MetricCardProps {
 
 function MetricCard({ label, subtitle, value, icon, iconBg, valueColor }: MetricCardProps) {
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="flex h-full flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
@@ -149,6 +150,40 @@ function MetricCard({ label, subtitle, value, icon, iconBg, valueColor }: Metric
       <p className={`mt-3 text-xl font-bold tabular-nums tracking-tight ${valueColor ?? "text-zinc-900 dark:text-white"}`}>
         {formatCurrency(value)}
       </p>
+    </div>
+  );
+}
+
+// ─── patrimônio card ──────────────────────────────────────────────────────────
+
+function WealthCard({ data }: { data: CashflowResponse }) {
+  return (
+    <div className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+          Patrimônio
+        </p>
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800">
+          <PiggyBank size={16} className="text-zinc-500 dark:text-zinc-400" />
+        </div>
+      </div>
+      <p className="mt-3 text-xl font-bold tabular-nums tracking-tight text-zinc-900 dark:text-white">
+        {formatCurrency(data.netAvailableWealth ?? 0)}
+      </p>
+      <div className="mt-4 flex flex-col">
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-xs text-zinc-400">Saldo nas contas</span>
+          <span className="text-xs tabular-nums text-zinc-200">{formatCurrency(data.currentBalance ?? 0)}</span>
+        </div>
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-xs text-zinc-400">Cofres livres</span>
+          <span className="text-xs tabular-nums text-zinc-200">{formatCurrency(data.availableVaultsBalance ?? 0)}</span>
+        </div>
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-xs text-zinc-400">Metas financeiras</span>
+          <span className="text-xs tabular-nums text-zinc-200">{formatCurrency(data.goalVaultsBalance ?? 0)}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -212,52 +247,40 @@ function RecentTransactions({ transactions }: { transactions: TransactionRespons
 function FreeCashCard({ data }: { data: CashflowResponse }) {
   const invoices = data.committedInvoices ?? 0;
   const saved = data.savedForInvoices ?? 0;
-  const pending = Math.max(0, invoices - saved);
+  const faturaDescoberta = Math.max(0, invoices - saved);
   const isFreeNegative = data.freeBalance < 0;
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
       <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
         Saldo Livre
       </p>
-      <p className={`mt-3 text-xl font-bold tabular-nums tracking-tight ${isFreeNegative ? "text-red-500" : "text-zinc-900 dark:text-white"}`}>
+      <p className={`mt-3 text-xl font-bold tabular-nums tracking-tight ${isFreeNegative ? "text-red-400/90" : "text-zinc-900 dark:text-white"}`}>
         {formatCurrency(data.freeBalance)}
       </p>
 
       {/* detalhamento didático */}
-      <div className="mt-4 flex flex-col gap-1.5 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50">
-        {/* linha 1 — saldo bruto nas contas */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-zinc-600 dark:text-zinc-300">Saldo nas Contas</span>
-          <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">
-            {formatCurrency(data.currentBalance)}
-          </span>
+      <div className="mt-4 flex flex-col">
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-xs text-zinc-400">Saldo nas contas</span>
+          <span className="text-xs tabular-nums text-zinc-200">{formatCurrency(data.currentBalance)}</span>
         </div>
-
-        {/* linha 2 — faturas atuais */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">(-) Faturas Atuais</span>
-          <span className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
-            – {formatCurrency(invoices)}
-          </span>
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-xs text-zinc-400">Faturas atuais</span>
+          <span className="text-xs tabular-nums text-zinc-200">- {formatCurrency(invoices)}</span>
         </div>
-
-        {/* linha 3 — reservado em cofre */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-emerald-600 dark:text-emerald-500">(+) Reservado em Cofre</span>
-          <span className="text-xs tabular-nums text-emerald-600 dark:text-emerald-500">
-            + {formatCurrency(saved)}
-          </span>
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-xs text-zinc-400">Cofre de faturas</span>
+          <span className="text-xs tabular-nums text-zinc-200">+ {formatCurrency(saved)}</span>
         </div>
-
-        {/* linha 4 — fatura descoberta (só se > 0) */}
-        {pending > 0 && (
-          <div className="flex items-center justify-between border-t border-zinc-200 pt-1.5 dark:border-zinc-700">
-            <span className="text-xs font-medium text-red-500 dark:text-red-400">(=) Fatura Descoberta</span>
-            <span className="text-xs font-medium tabular-nums text-red-500 dark:text-red-400">
-              – {formatCurrency(pending)}
-            </span>
-          </div>
+        {faturaDescoberta > 0 && (
+          <>
+            <hr className="my-2 border-zinc-800" />
+            <div className="flex items-center justify-between py-1.5">
+              <span className="text-xs text-zinc-400">Fatura a cobrir</span>
+              <span className="text-xs tabular-nums text-zinc-200">- {formatCurrency(faturaDescoberta)}</span>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -285,12 +308,23 @@ function FreeCashCardSkeleton() {
   );
 }
 
+// ─── tabs ─────────────────────────────────────────────────────────────────────
+
+type Tab = "overview" | "performance" | "transactions";
+
+const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: "overview", label: "Visão Geral", icon: <LayoutDashboard size={14} /> },
+  { id: "performance", label: "Desempenho", icon: <BarChart2 size={14} /> },
+  { id: "transactions", label: "Transações", icon: <ArrowLeftRight size={14} /> },
+];
+
 // ─── página ───────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
   const { openTransactionForm } = useTransactionForm();
 
   const [selectedMonth, setSelectedMonth] = useState(currentMonthIso);
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [userName, setUserName] = useState<string | null>(null);
 
   // dados dependentes do mês
@@ -298,25 +332,22 @@ export default function HomePage() {
 
   // dados independentes do mês
   const [cashflow, setCashflow] = useState<CashflowResponse | null>(null);
-  const [balance, setBalance] = useState<BalanceResponse | null>(null);
-  const [performance, setPerformance] = useState<IncomeVsExpenseResponse | null | undefined>(undefined);
+const [performance, setPerformance] = useState<IncomeVsExpenseResponse | null | undefined>(undefined);
   const [recentTx, setRecentTx] = useState<TransactionResponse[] | null>(null);
 
   // carrega dados fixos uma única vez
   useEffect(() => {
     async function loadFixed() {
-      const [perf, tx, user, cf, bal] = await Promise.all([
+      const [perf, tx, user, cf] = await Promise.all([
         getIncomeVsExpense(6).catch(() => null),
         getTransactions(0).catch(() => null),
         getMe().catch(() => null),
         getCashflow().catch(() => null),
-        getBalance().catch(() => null),
       ]);
 
       if (user) setUserName(user.name.split(" ")[0]);
       setPerformance(perf ?? null);
       setCashflow(cf);
-      setBalance(bal);
 
       if (tx) {
         const sorted = [...tx.content].sort(
@@ -333,7 +364,7 @@ export default function HomePage() {
 
   // carrega summary sempre que o mês muda
   const loadSummary = useCallback(async (month: string) => {
-    setSummary(undefined); // volta ao skeleton
+    setSummary(undefined);
     const data = await getMonthlySummary(month).catch(() => null);
     setSummary(data);
   }, []);
@@ -345,13 +376,11 @@ export default function HomePage() {
   // recarrega todos os dados quando uma transação é criada/editada/excluída
   useEffect(() => {
     async function onUpdated() {
-      const [tx, cf, bal] = await Promise.all([
+      const [tx, cf] = await Promise.all([
         getTransactions(0).catch(() => null),
         getCashflow().catch(() => null),
-        getBalance().catch(() => null),
       ]);
       if (cf) setCashflow(cf);
-      if (bal) setBalance(bal);
       if (tx) {
         const sorted = [...tx.content].sort(
           (a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime()
@@ -364,10 +393,8 @@ export default function HomePage() {
     return () => window.removeEventListener("transaction-updated", onUpdated);
   }, [selectedMonth, loadSummary]);
 
-  // métricas do mês (derivadas do summary)
   const totalIncome = summary?.totalIncome ?? 0;
   const totalExpense = summary?.totalExpense ?? 0;
-
   const isCurrentMonth = selectedMonth === currentMonthIso();
 
   return (
@@ -402,7 +429,7 @@ export default function HomePage() {
         >
           <ChevronLeft size={18} />
         </button>
-        <p className="text-sm font-medium capitalize text-zinc-700 dark:text-zinc-300">
+        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           {monthLabel(selectedMonth)}
         </p>
         <button
@@ -415,97 +442,139 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* ── 4 cards de métricas ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Patrimônio — não depende do mês, depende do balance */}
-        {balance === null ? (
-          <MetricCardSkeleton />
-        ) : (
-          <MetricCard
-            label="Patrimônio"
-            subtitle="Contas + Cofres Livres"
-            value={balance?.netWorth || balance?.availableBalance || 0}
-            valueColor="text-zinc-900 dark:text-white"
-            iconBg="bg-zinc-100 dark:bg-zinc-800"
-            icon={<PiggyBank size={16} className="text-zinc-500 dark:text-zinc-400" />}
-          />
-        )}
-
-        {/* Receitas e Despesas — dependem do mês */}
-        {summary === undefined ? (
-          <>
-            <MetricCardSkeleton />
-            <MetricCardSkeleton />
-          </>
-        ) : (
-          <>
-            <MetricCard
-              label="Receitas"
-              value={totalIncome}
-              valueColor="text-emerald-600 dark:text-emerald-400"
-              iconBg="bg-emerald-50 dark:bg-emerald-950/40"
-              icon={<TrendingUp size={16} className="text-emerald-500" />}
-            />
-            <MetricCard
-              label="Despesas"
-              value={totalExpense}
-              valueColor="text-zinc-500 dark:text-zinc-400"
-              iconBg="bg-zinc-100 dark:bg-zinc-800"
-              icon={<TrendingDown size={16} className="text-zinc-400 dark:text-zinc-500" />}
-            />
-          </>
-        )}
-
-        {/* Saldo Livre — não depende do mês */}
-        {cashflow === null ? (
-          <FreeCashCardSkeleton />
-        ) : (
-          <FreeCashCard data={cashflow} />
-        )}
+      {/* ── tabs ─────────────────────────────────────────────────────────────── */}
+      <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-800">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1.5 px-3 pb-2.5 pt-1 text-sm transition-colors ${
+              activeTab === tab.id
+                ? "border-b-2 border-zinc-900 font-medium text-zinc-900 dark:border-zinc-100 dark:text-zinc-100"
+                : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* ── gráfico receitas vs despesas ─────────────────────────────────────── */}
-      <div>
-        {performance === undefined ? (
-          <IncomeVsExpenseChartSkeleton />
-        ) : (
-          <IncomeVsExpenseChart months={performance?.months ?? []} />
-        )}
-      </div>
+      {/* ══ aba: visão geral ═════════════════════════════════════════════════════ */}
+      {activeTab === "overview" && (
+        <>
+          {/* linha 1 — KPIs: grid 12 colunas, items-stretch equaliza alturas */}
+          <div className="grid grid-cols-12 items-stretch gap-4">
+            {/* Patrimônio — col 3 */}
+            <div className="col-span-12 sm:col-span-6 lg:col-span-3">
+              {cashflow === null ? (
+                <MetricCardSkeleton />
+              ) : (
+                <WealthCard data={cashflow} />
+              )}
+            </div>
 
-      {/* ── próximos vencimentos ─────────────────────────────────────────────── */}
-      <UpcomingPayments
-        onPaid={() => {
-          getCashflow().then((cf) => { if (cf) setCashflow(cf); }).catch(() => {});
-          getBalance().then((bal) => { if (bal) setBalance(bal); }).catch(() => {});
-          loadSummary(selectedMonth);
-        }}
-      />
+            {/* Receitas — col 3 */}
+            <div className="col-span-12 sm:col-span-6 lg:col-span-3">
+              {summary === undefined ? (
+                <MetricCardSkeleton />
+              ) : (
+                <MetricCard
+                  label="Receitas"
+                  value={totalIncome}
+                  valueColor="text-emerald-600 dark:text-emerald-400"
+                  iconBg="bg-emerald-50 dark:bg-emerald-950/40"
+                  icon={<TrendingUp size={16} className="text-emerald-500" />}
+                />
+              )}
+            </div>
 
-      {/* ── top gastos por categoria + transações recentes — 2 colunas no lg ── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+            {/* Despesas — col 3 */}
+            <div className="col-span-12 sm:col-span-6 lg:col-span-3">
+              {summary === undefined ? (
+                <MetricCardSkeleton />
+              ) : (
+                <MetricCard
+                  label="Despesas"
+                  value={totalExpense}
+                  valueColor="text-zinc-500 dark:text-zinc-400"
+                  iconBg="bg-zinc-100 dark:bg-zinc-800"
+                  icon={<TrendingDown size={16} className="text-zinc-400 dark:text-zinc-500" />}
+                />
+              )}
+            </div>
 
-        {/* onde o dinheiro foi — 3/5 */}
-        <div className="lg:col-span-3">
+            {/* Saldo Livre — col 3, borda destacada */}
+            <div className="col-span-12 sm:col-span-6 lg:col-span-3">
+              {cashflow === null ? (
+                <FreeCashCardSkeleton />
+              ) : (
+                <FreeCashCard data={cashflow} />
+              )}
+            </div>
+          </div>
+
+          {/* linha 2 — gráfico (8 cols) + categorias (4 cols), altura travada */}
+          <div className="grid grid-cols-12 items-stretch gap-6">
+            <div className="col-span-12 h-[420px] lg:col-span-8">
+              {performance === undefined ? (
+                <IncomeVsExpenseChartSkeleton />
+              ) : (
+                <IncomeVsExpenseChart months={performance?.months ?? []} />
+              )}
+            </div>
+
+            <div className="col-span-12 h-[420px] lg:col-span-4">
+              {summary === undefined ? (
+                <ExpenseByCategoryListSkeleton />
+              ) : (
+                <ExpenseByCategoryList
+                  categories={summary?.expensesByCategory ?? []}
+                  month={monthLabel(selectedMonth)}
+                  onNewTransaction={openTransactionForm}
+                />
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ══ aba: desempenho ══════════════════════════════════════════════════════ */}
+      {activeTab === "performance" && (
+        <div className="flex flex-col gap-6">
+          {performance === undefined ? (
+            <IncomeVsExpenseChartSkeleton />
+          ) : (
+            <IncomeVsExpenseChart months={performance?.months ?? []} />
+          )}
           {summary === undefined ? (
             <ExpenseByCategoryListSkeleton />
           ) : (
             <ExpenseByCategoryList
               categories={summary?.expensesByCategory ?? []}
               month={monthLabel(selectedMonth)}
+              onNewTransaction={openTransactionForm}
             />
           )}
         </div>
+      )}
 
-        {/* transações recentes — 2/5 */}
-        <div className="lg:col-span-2">
+      {/* ══ aba: transações ══════════════════════════════════════════════════════ */}
+      {activeTab === "transactions" && (
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+          <UpcomingPayments
+            onPaid={() => {
+              getCashflow().then((cf) => { if (cf) setCashflow(cf); }).catch(() => {});
+              loadSummary(selectedMonth);
+            }}
+          />
           {recentTx === null ? (
             <RecentTransactionsSkeleton />
           ) : (
             <RecentTransactions transactions={recentTx} />
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

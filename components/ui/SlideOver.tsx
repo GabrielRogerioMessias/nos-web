@@ -50,8 +50,10 @@ export function SlideOver({ open, onClose, title, children }: SlideOverProps) {
         </div>
 
         {/* conteúdo com scroll */}
-        <div className="flex flex-1 flex-col overflow-y-auto px-6 py-5">
+        <div className="flex flex-1 flex-col overflow-y-auto px-6 py-5 pb-safe">
           {children}
+          {/* espaço extra no mobile para não ficar atrás do BottomNav */}
+          <div className="h-4 flex-shrink-0 md:hidden" />
         </div>
       </div>
     </>

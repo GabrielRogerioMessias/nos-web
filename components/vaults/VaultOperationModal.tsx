@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle, X } from "lucide-react";
-import { depositToVault, withdrawFromVault, type VaultResponse } from "@/lib/vaults";
+import { depositToVault, withdrawFromVault, getVaultById, type VaultResponse } from "@/lib/vaults";
 import { getAccounts } from "@/lib/accounts";
 import type { AccountResponse } from "@/types/dashboard";
 import { Select } from "@/components/ui/Select";
@@ -47,23 +47,30 @@ export function VaultOperationModal({ vault, type, onClose, onSuccess, onError }
   const [accountId, setAccountId] = useState(vault.account?.id ?? "");
   const [description, setDescription] = useState("");
   const [accounts, setAccounts] = useState<AccountResponse[]>([]);
+  const [resolvedAccount, setResolvedAccount] = useState(vault.account);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<{ amount?: string; accountId?: string }>({});
 
   const isDeposit = type === "deposit";
-  const containerLabel = vault.vaultType === "GOAL" ? "meta" : "cofre";
+  const isGoal = vault.vaultType === "GOAL";
+  const containerLabel = isGoal ? "meta" : "cofre";
+  const containerArtigo = isGoal ? "da" : "do";
 
   useEffect(() => {
-    // No resgate, a conta já é fixa (conta pai do cofre) — só precisa carregar para o depósito
-    if (!isDeposit) return;
-    getAccounts().then((list) => {
-      const active = list.filter((a) => a.active);
-      setAccounts(active);
-      // Pré-seleciona a conta pai do cofre se disponível, senão a primeira
-      const defaultId = vault.account?.id ?? (active[0]?.id ?? "");
-      setAccountId(defaultId);
-    });
-  }, [isDeposit, vault.account?.id]);
+    if (isDeposit) {
+      getAccounts().then((list) => {
+        const active = list.filter((a) => a.active);
+        setAccounts(active);
+        const defaultId = vault.account?.id ?? (active[0]?.id ?? "");
+        setAccountId(defaultId);
+      });
+    } else if (!vault.account && vault.id) {
+      // resgate sem account no objeto — busca vault completo para obter a conta destino
+      getVaultById(vault.id)
+        .then((v) => { if (v.account) setResolvedAccount(v.account); })
+        .catch(() => {});
+    }
+  }, [isDeposit, vault.account, vault.id]);
 
   // fecha com ESC
   useEffect(() => {
@@ -80,7 +87,7 @@ export function VaultOperationModal({ vault, type, onClose, onSuccess, onError }
     const next: typeof errors = {};
     if (!amountDisplay || isNaN(amount) || amount <= 0)
       next.amount = "Informe um valor maior que zero.";
-    if (!accountId) next.accountId = "Selecione uma conta.";
+    if (isDeposit && !accountId) next.accountId = "Selecione uma conta.";
     if (Object.keys(next).length) { setErrors(next); return; }
 
     setSaving(true);
@@ -88,7 +95,8 @@ export function VaultOperationModal({ vault, type, onClose, onSuccess, onError }
       if (isDeposit) {
         await depositToVault(vault.id, amount, accountId, description || undefined);
       } else {
-        await withdrawFromVault(vault.id, amount, accountId, description || undefined);
+        const destAccountId = resolvedAccount?.id ?? accountId;
+        await withdrawFromVault(vault.id, amount, destAccountId, description || undefined);
       }
       onSuccess();
     } catch (err: unknown) {
@@ -135,7 +143,7 @@ export function VaultOperationModal({ vault, type, onClose, onSuccess, onError }
             </div>
             <div>
               <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                {isDeposit ? `Guardar na ${containerLabel}` : `Resgatar da ${containerLabel}`}
+                {isDeposit ? `Guardar na ${containerLabel}` : `Resgatar ${containerArtigo} ${containerLabel}`}
               </p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">{vault.name}</p>
             </div>
@@ -150,7 +158,7 @@ export function VaultOperationModal({ vault, type, onClose, onSuccess, onError }
 
         {/* saldo atual */}
         <div className="mb-5 rounded-lg border border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-800/50">
-          <p className="text-xs text-zinc-400 dark:text-zinc-500">Saldo atual da {containerLabel}</p>
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">Saldo atual {containerArtigo} {containerLabel}</p>
           <p className="mt-0.5 text-base font-medium text-zinc-900 dark:text-zinc-50">
             {formatCurrency(vault.currentBalance)}
           </p>
@@ -207,16 +215,16 @@ export function VaultOperationModal({ vault, type, onClose, onSuccess, onError }
             </div>
           ) : (
             /* Resgate: conta destino é sempre a conta pai — apenas informativo */
-            vault.account && (
-              <div className="flex items-center justify-between rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-800/50">
-                <p className="text-xs text-zinc-400 dark:text-zinc-500">Destino do resgate</p>
-                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  {vault.account.bankName
-                    ? `${vault.account.bankName} — ${vault.account.name}`
-                    : vault.account.name}
-                </p>
-              </div>
-            )
+            <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-800/50">
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">Destino do resgate</p>
+              <p className="mt-0.5 truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                {resolvedAccount
+                  ? resolvedAccount.bankName && resolvedAccount.bankName !== resolvedAccount.name
+                    ? `${resolvedAccount.bankName} — ${resolvedAccount.name}`
+                    : resolvedAccount.name
+                  : "Conta vinculada ao cofre"}
+              </p>
+            </div>
           )}
 
           {/* descrição opcional */}

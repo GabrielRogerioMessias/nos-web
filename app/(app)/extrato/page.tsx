@@ -40,7 +40,8 @@ function nextMonth(month: string) {
 
 function monthLabel(month: string) {
   const [y, m] = month.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const label = new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  return label.charAt(0).toUpperCase() + label.slice(1).replace(/ De /g, " de ");
 }
 
 function monthToDateRange(month: string): { startDate: string; endDate: string } {
@@ -182,18 +183,18 @@ export default function ExtratoPage() {
     <>
       <div className="flex flex-col gap-4">
         {/* cabeçalho */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
             {fromDash && (
               <button
                 onClick={() => router.push("/")}
-                className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                className="flex-shrink-0 rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                 aria-label="Voltar ao dashboard"
               >
                 <ArrowLeft size={16} />
               </button>
             )}
-            <div>
+            <div className="min-w-0">
               <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Extrato</h1>
               {transactions !== null && (
                 <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
@@ -207,16 +208,17 @@ export default function ExtratoPage() {
           {!isAccountReadOnly && (
             <button
               onClick={openNew}
-              className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="flex flex-shrink-0 items-center gap-2 rounded-lg bg-zinc-900 px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 sm:px-4 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
               <Plus size={15} />
-              Nova transação
+              <span className="hidden sm:inline">Nova transação</span>
+              <span className="sm:hidden">Nova</span>
             </button>
           )}
         </div>
 
         {/* seletor de mês */}
-        <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-3 sm:px-5 dark:border-zinc-800 dark:bg-zinc-950">
           <button
             onClick={handlePrevMonth}
             className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
@@ -224,7 +226,7 @@ export default function ExtratoPage() {
           >
             <ChevronLeft size={16} />
           </button>
-          <span className="text-sm font-medium capitalize text-zinc-700 dark:text-zinc-300">
+          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {monthLabel(selectedMonth)}
           </span>
           <button

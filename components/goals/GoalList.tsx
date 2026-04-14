@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   MoreHorizontal, Pencil, Trash2, CheckCircle2,
   ArrowDownCircle, ArrowUpCircle, Sparkles, ChevronRight,
-  AlertTriangle, Target, Plus,
+  AlertTriangle, Target, Plus, ChevronDown,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideProps } from "lucide-react";
@@ -214,10 +214,10 @@ function GoalCard({ goal, onEdit, onDelete, onAchieve, onDeposit, onWithdraw, on
             />
           </div>
 
-          {/* nome + badge + conta */}
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 line-clamp-1">
+          {/* nome + badge + data + conta */}
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="min-w-0 truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                 {goal.name}
               </p>
               {isAchieved && (
@@ -226,6 +226,15 @@ function GoalCard({ goal, onEdit, onDelete, onAchieve, onDeposit, onWithdraw, on
                 </span>
               )}
             </div>
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-500">
+              {isAchieved && goal.achievedAt
+                ? `Concluída em ${formatDate(goal.achievedAt)}`
+                : goal.projection?.projectedDate
+                ? `Previsão: ${formatDate(goal.projection.projectedDate)}`
+                : goal.targetDate
+                ? `Alvo: ${formatDate(goal.targetDate)}`
+                : "Sem data alvo"}
+            </p>
             {goal.vault?.account && (
               <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500 line-clamp-1">
                 🏦 {goal.vault.account.bankName || goal.vault.account.name}
@@ -252,69 +261,73 @@ function GoalCard({ goal, onEdit, onDelete, onAchieve, onDeposit, onWithdraw, on
                 }}
               />
             </div>
-            <div className="mt-1.5 flex items-center justify-between">
+            <div className="mt-1.5">
               <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
                 {Math.round(progress)}% atingido
-              </span>
-              <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                {isAchieved && goal.achievedAt
-                  ? `Concluída em ${formatDate(goal.achievedAt)}`
-                  : goal.projection?.projectedDate
-                  ? `Previsão: ${formatDate(goal.projection.projectedDate)}`
-                  : goal.targetDate
-                  ? `Alvo: ${formatDate(goal.targetDate)}`
-                  : "Sem data alvo"}
               </span>
             </div>
           </div>
         </div>
 
+        {/* botão destaque: finalizar meta quando progresso >= 100 e ainda não concluída */}
+        {!isAchieved && progress >= 100 && (
+          <div className="px-5 pb-3">
+            <button
+              type="button"
+              onClick={() => setConfirmAchieve(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-emerald-700"
+            >
+              <CheckCircle2 size={14} /> Finalizar Meta
+            </button>
+          </div>
+        )}
+
         {/* rodapé de ações */}
         {hasVault && (
-          <>
-            {/* link ver extrato */}
-            <div className="flex w-full justify-end px-5 mb-3">
-              <button
-                type="button"
-                onClick={() => onStatement(goal)}
-                className="flex items-center gap-1 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
-              >
-                Ver extrato <ChevronRight size={12} />
-              </button>
-            </div>
-
-            <div className="flex w-full items-center border-t border-zinc-200 dark:border-zinc-800">
-              {!isAchieved ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => onDeposit(goal)}
-                    className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100 border-r border-zinc-200 dark:border-zinc-800"
-                  >
-                    <ArrowDownCircle size={14} /> Guardar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onWithdraw(goal)}
-                    className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100 border-r border-zinc-200 dark:border-zinc-800"
-                  >
-                    <ArrowUpCircle size={14} /> Resgatar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onStatement(goal)}
-                    className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
-                  >
-                    <Sparkles size={14} /> Rendimentos
-                  </button>
-                </>
-              ) : (
-                <div className="flex flex-1 items-center justify-center h-11 text-xs text-zinc-400 dark:text-zinc-600">
-                  Meta concluída
-                </div>
-              )}
-            </div>
-          </>
+          <div className="flex w-full items-center border-t border-zinc-200 dark:border-zinc-800">
+            {!isAchieved ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onDeposit(goal)}
+                  className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100 border-r border-zinc-200 dark:border-zinc-800"
+                >
+                  <ArrowDownCircle size={14} /> Guardar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onWithdraw(goal)}
+                  className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100 border-r border-zinc-200 dark:border-zinc-800"
+                >
+                  <ArrowUpCircle size={14} /> Resgatar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onStatement(goal)}
+                  className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
+                >
+                  <Sparkles size={14} /> Rendimentos
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onWithdraw(goal)}
+                  className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100 border-r border-zinc-200 dark:border-zinc-800"
+                >
+                  <ArrowUpCircle size={14} /> Resgatar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onStatement(goal)}
+                  className="flex flex-1 items-center justify-center gap-2 h-11 rounded-none px-2 text-xs font-medium whitespace-nowrap text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
+                >
+                  <Sparkles size={14} /> Rendimentos
+                </button>
+              </>
+            )}
+          </div>
         )}
       </div>
 
@@ -342,6 +355,13 @@ interface GoalListProps {
 }
 
 export function GoalList({ goals, onEdit, onDelete, onAchieve, onDeposit, onWithdraw, onStatement, onCreateNew }: GoalListProps) {
+  const [achievedOpen, setAchievedOpen] = useState(false);
+
+  const active = goals.filter((g) => !g.achieved);
+  const achieved = goals.filter((g) => g.achieved);
+
+  const cardProps = { onEdit, onDelete, onAchieve, onDeposit, onWithdraw, onStatement };
+
   if (goals.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-200 py-20 text-center dark:border-zinc-800">
@@ -364,22 +384,43 @@ export function GoalList({ goals, onEdit, onDelete, onAchieve, onDeposit, onWith
     );
   }
 
-  const sorted = [...goals].sort((a, b) => Number(a.achieved) - Number(b.achieved));
-
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {sorted.map((goal) => (
-        <GoalCard
-          key={goal.id}
-          goal={goal}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onAchieve={onAchieve}
-          onDeposit={onDeposit}
-          onWithdraw={onWithdraw}
-          onStatement={onStatement}
-        />
-      ))}
+    <div className="flex flex-col gap-8">
+      {/* grupo 1 — metas ativas */}
+      {active.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {active.map((goal) => (
+              <GoalCard key={goal.id} goal={goal} {...cardProps} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* grupo 2 — metas concluídas (accordion) */}
+      {achieved.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => setAchievedOpen((v) => !v)}
+            className="flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+          >
+            <ChevronDown
+              size={15}
+              className={`transition-transform ${achievedOpen ? "rotate-180" : ""}`}
+            />
+            {achieved.length} meta{achieved.length !== 1 ? "s" : ""} concluída{achieved.length !== 1 ? "s" : ""}
+          </button>
+
+          {achievedOpen && (
+            <div className="grid grid-cols-1 gap-4 opacity-60 md:grid-cols-2 lg:grid-cols-3">
+              {achieved.map((goal) => (
+                <GoalCard key={goal.id} goal={goal} {...cardProps} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

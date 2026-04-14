@@ -192,7 +192,7 @@ export function AccountForm({ editing, onSave, onCancel }: AccountFormProps) {
       </div>
 
       {/* ações */}
-      <div className="mt-auto flex gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800">
+      <div className="sticky bottom-0 mt-6 flex gap-3 border-t border-zinc-100 bg-white pt-5 dark:border-zinc-800 dark:bg-zinc-950">
         <button
           type="button"
           onClick={onCancel}

@@ -115,7 +115,7 @@ function TransactionRow({ tx, readOnly = false, onEdit, onDeleteRequest }: Trans
     : "text-zinc-900 dark:text-zinc-50";
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3.5 sm:px-5 sm:py-4">
+    <div className="flex items-center gap-2 px-4 py-3.5 sm:gap-3 sm:px-5 sm:py-4">
       {/* descrição + origem */}
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
@@ -130,7 +130,7 @@ function TransactionRow({ tx, readOnly = false, onEdit, onDeleteRequest }: Trans
           {isExpense ? "– " : isTransfer ? "" : "+ "}
           {formatCurrency(tx.amount)}
         </span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <span className="text-xs tabular-nums text-zinc-400 dark:text-zinc-500">
             {formatDate(tx.transactionDate)}
           </span>

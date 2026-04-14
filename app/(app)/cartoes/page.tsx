@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Plus, AlertTriangle, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   getCreditCards,
   getCreditCard,
@@ -21,6 +20,7 @@ import {
   type CardWithInvoice,
 } from "@/components/credit-cards/CreditCardList";
 import { CreditCardForm } from "@/components/credit-cards/CreditCardForm";
+import { NoAccountModal } from "@/components/accounts/NoAccountModal";
 
 let toastId = 0;
 
@@ -36,7 +36,6 @@ function nextMonthISO(iso: string) {
 }
 
 export default function CartoesPage() {
-  const router = useRouter();
   const [cards, setCards] = useState<CreditCardResponse[] | null>(null);
   const [invoices, setInvoices] = useState<Record<string, InvoiceResponse | null>>({});
   const [invoiceLoading, setInvoiceLoading] = useState<Record<string, boolean>>({});
@@ -233,42 +232,11 @@ export default function CartoesPage() {
 
       {/* aviso: nenhuma conta cadastrada */}
       {showNoAccountsWarning && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setShowNoAccountsWarning(false)} />
-          <div className="fixed inset-x-4 top-1/2 z-50 mx-auto max-w-sm -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/40">
-                  <AlertTriangle size={17} className="text-amber-500" />
-                </div>
-                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Conta bancária necessária</p>
-              </div>
-              <button
-                onClick={() => setShowNoAccountsWarning(false)}
-                className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                <X size={15} />
-              </button>
-            </div>
-            <p className="mb-5 text-sm text-zinc-500 dark:text-zinc-400">
-              Para cadastrar um cartão de crédito, você precisa ter pelo menos uma conta bancária ativa. As faturas serão vinculadas a ela.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowNoAccountsWarning(false)}
-                className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-              >
-                Agora não
-              </button>
-              <button
-                onClick={() => { setShowNoAccountsWarning(false); router.push("/contas"); }}
-                className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-              >
-                Criar conta bancária
-              </button>
-            </div>
-          </div>
-        </>
+        <NoAccountModal
+          context="um cartão de crédito"
+          onClose={() => setShowNoAccountsWarning(false)}
+          onAccountCreated={() => setHasAccounts(true)}
+        />
       )}
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />

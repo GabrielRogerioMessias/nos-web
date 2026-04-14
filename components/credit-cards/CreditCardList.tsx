@@ -19,7 +19,8 @@ function currentMonthISO() {
 
 function monthLabel(iso: string): string {
   const [y, m] = iso.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleString("pt-BR", { month: "long" });
+  const label = new Date(y, m - 1, 1).toLocaleString("pt-BR", { month: "long" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 function formatCurrency(value: number) {

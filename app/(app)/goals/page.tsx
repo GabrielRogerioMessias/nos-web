@@ -12,17 +12,18 @@ import { GoalList, GoalListSkeleton } from "@/components/goals/GoalList";
 import { GoalFormModal } from "@/components/goals/GoalFormModal";
 import { VaultOperationModal } from "@/components/vaults/VaultOperationModal";
 import { VaultStatementSheet } from "@/components/vaults/VaultStatementSheet";
+import { NoAccountModal } from "@/components/accounts/NoAccountModal";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function goalToVault(goal: GoalResponse): VaultResponse {
   return {
-    id: goal.vault!.id,
+    id: goal.vault?.id ?? goal.id,
     name: goal.name,
-    currentBalance: goal.vault!.currentBalance,
+    currentBalance: goal.vault?.currentBalance ?? 0,
     active: true,
     vaultType: "GOAL",
-    account: goal.vault!.account,
+    account: goal.vault?.account,
   };
 }
 
@@ -33,6 +34,7 @@ let toastIdCounter = 0;
 export default function GoalsPage() {
   const [goals, setGoals] = useState<GoalResponse[] | null>(null);
   const [accounts, setAccounts] = useState<AccountResponse[]>([]);
+  const [showNoAccountsWarning, setShowNoAccountsWarning] = useState(false);
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState<GoalResponse | null>(null);
   const [depositGoal, setDepositGoal] = useState<GoalResponse | null>(null);
@@ -68,7 +70,7 @@ export default function GoalsPage() {
 
   function openNew() {
     if (accounts.length === 0) {
-      addToast("Cadastre pelo menos uma Conta Bancária antes de criar uma meta.", "error");
+      setShowNoAccountsWarning(true);
       return;
     }
     setEditing(null);
@@ -170,7 +172,7 @@ export default function GoalsPage() {
         />
       )}
 
-      {depositGoal?.vault && (
+      {depositGoal && (
         <VaultOperationModal
           vault={goalToVault(depositGoal)}
           type="deposit"
@@ -180,7 +182,7 @@ export default function GoalsPage() {
         />
       )}
 
-      {withdrawGoal?.vault && (
+      {withdrawGoal && (
         <VaultOperationModal
           vault={goalToVault(withdrawGoal)}
           type="withdraw"
@@ -194,6 +196,18 @@ export default function GoalsPage() {
         <VaultStatementSheet
           vault={goalToVault(statementGoal)}
           onClose={() => setStatementGoal(null)}
+        />
+      )}
+
+      {showNoAccountsWarning && (
+        <NoAccountModal
+          context="uma meta financeira"
+          onClose={() => setShowNoAccountsWarning(false)}
+          onAccountCreated={() => {
+            getAccounts()
+              .then((list) => setAccounts(list.filter((a) => a.active)))
+              .catch(() => {});
+          }}
         />
       )}
 

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Plus, PiggyBank, ArrowDownCircle, ArrowUpCircle, Sparkles, MoreHorizontal, Pencil, Trash2, ChevronRight } from "lucide-react";
+import { NoAccountModal } from "@/components/accounts/NoAccountModal";
 import * as LucideIcons from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import { getVaults, deleteVault, type VaultResponse } from "@/lib/vaults";
@@ -71,6 +72,7 @@ function VaultCard({
   onReconcile,
   onEdit,
   onDelete,
+  yieldFlash,
 }: {
   vault: VaultResponse;
   onDeposit: () => void;
@@ -79,13 +81,21 @@ function VaultCard({
   onReconcile: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  yieldFlash?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const cardColor = vault.color ?? "#6366f1";
   const iconName = vault.icon ?? "PiggyBank";
+  const isInvoice = vault.vaultType === "INVOICE";
+  const yield_ = vault.totalYieldEarned ?? 0;
+  const hasYield = yield_ > 0;
 
   return (
-    <div className="flex w-full flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <div className={`relative flex w-full flex-col overflow-hidden rounded-2xl border bg-white transition-all duration-500 dark:bg-zinc-900 ${
+      isInvoice
+        ? "border-l-2 border-emerald-500/60 border-t-zinc-200 border-r-zinc-200 border-b-zinc-200 dark:border-t-zinc-800 dark:border-r-zinc-800 dark:border-b-zinc-800"
+        : "border-zinc-200 dark:border-zinc-800"
+    } ${yieldFlash ? "ring-2 ring-emerald-400/50 ring-offset-1" : ""}`}>
 
       {/* ── corpo ── */}
       <div className="flex flex-col gap-4 p-5">
@@ -105,7 +115,7 @@ function VaultCard({
               </p>
               <div className="mt-0.5 flex items-center gap-1.5">
                 <span className="text-xs text-zinc-400 dark:text-zinc-500">
-                  {vault.vaultType === "INVOICE" ? "Fatura" : "Livre"}
+                  {isInvoice ? "Fatura" : "Livre"}
                 </span>
                 {vault.account && (
                   <>
@@ -156,6 +166,14 @@ function VaultCard({
           <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white">
             {formatCurrency(vault.currentBalance)}
           </p>
+
+          {/* rendimentos — sempre ocupa espaço para manter altura uniforme */}
+          <p className={`mt-1 flex items-center gap-1 text-[11px] text-emerald-500/80 ${hasYield ? "" : "invisible"}`}>
+            <Sparkles size={10} />
+            {isInvoice
+              ? `Esta fatura já rendeu ${formatCurrency(yield_)}`
+              : `+ ${formatCurrency(yield_)} em rendimentos`}
+          </p>
         </div>
       </div>
 
@@ -203,8 +221,10 @@ let toastIdCounter = 0;
 export default function CofresPage() {
   const [vaults, setVaults] = useState<VaultResponse[] | undefined>(undefined);
   const [accounts, setAccounts] = useState<string[]>([]); // só precisamos saber se há alguma
+  const [showNoAccountsWarning, setShowNoAccountsWarning] = useState(false);
   const [modal, setModal] = useState<Modal | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
+  const [flashVaultId, setFlashVaultId] = useState<string | null>(null);
 
   function addToast(message: string, type: ToastData["type"] = "error") {
     const id = ++toastIdCounter;
@@ -230,7 +250,7 @@ export default function CofresPage() {
 
   function openCreate() {
     if (accounts.length === 0) {
-      addToast("Cadastre pelo menos uma Conta Bancária antes de criar um cofre.", "error");
+      setShowNoAccountsWarning(true);
       return;
     }
     setModal({ type: "create" });
@@ -302,6 +322,7 @@ export default function CofresPage() {
               onReconcile={() => setModal({ type: "reconcile", vault })}
               onEdit={() => setModal({ type: "edit", vault })}
               onDelete={() => handleDelete(vault)}
+              yieldFlash={flashVaultId === vault.id}
             />
           ))}
         </div>
@@ -341,16 +362,31 @@ export default function CofresPage() {
           vault={modal.vault}
           onClose={() => setModal(null)}
           onSuccess={(yieldAmount) => {
+            const vaultId = modal.vault.id;
             setModal(null);
             addToast(
               `Rendimento de ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(yieldAmount)} registrado com sucesso.`,
               "success",
             );
             load();
+            setFlashVaultId(vaultId);
+            setTimeout(() => setFlashVaultId(null), 1800);
           }}
           onError={(msg) => {
             setModal(null);
             addToast(msg);
+          }}
+        />
+      )}
+
+      {showNoAccountsWarning && (
+        <NoAccountModal
+          context="um cofre"
+          onClose={() => setShowNoAccountsWarning(false)}
+          onAccountCreated={() => {
+            getAccounts()
+              .then((list) => setAccounts(list.filter((a) => a.active).map((a) => a.id)))
+              .catch(() => {});
           }}
         />
       )}

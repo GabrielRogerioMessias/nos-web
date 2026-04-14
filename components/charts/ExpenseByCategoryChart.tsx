@@ -1,5 +1,6 @@
 "use client";
 
+import { Receipt } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import type { CategoryExpense } from "@/lib/dashboard";
 
@@ -202,6 +203,7 @@ export function ExpenseByCategoryChart({ categories, month }: Props) {
 interface ListProps {
   categories: CategoryExpense[];
   month: string;
+  onNewTransaction?: () => void;
 }
 
 function formatCurrencyCompact(value: number): string {
@@ -214,21 +216,33 @@ function formatCurrencyCompact(value: number): string {
   }).format(safe);
 }
 
-export function ExpenseByCategoryList({ categories, month }: ListProps) {
+export function ExpenseByCategoryList({ categories, month, onNewTransaction }: ListProps) {
   const safe = (Array.isArray(categories) ? categories : []).filter(
     (c) => Number.isFinite(c.totalAmount) && c.totalAmount > 0
   );
 
   if (safe.length === 0) {
     return (
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mb-4 flex items-baseline justify-between">
+      <div className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-4 flex flex-shrink-0 items-baseline justify-between">
           <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Onde seu dinheiro foi</p>
           <p className="text-xs text-zinc-400 dark:text-zinc-500">{month}</p>
         </div>
-        <p className="py-8 text-center text-sm text-zinc-400 dark:text-zinc-500">
-          Nenhuma despesa registrada neste mês.
-        </p>
+        <div className="flex flex-1 flex-col items-center justify-center">
+          <Receipt className="mb-3 h-10 w-10 text-zinc-700" />
+          <p className="font-medium text-zinc-300">Nenhuma despesa neste mês</p>
+          <p className="mt-1 max-w-sm text-center text-sm text-zinc-500">
+            Os seus gastos aparecerão aqui divididos por categoria para você entender para onde seu dinheiro está indo.
+          </p>
+          {onNewTransaction && (
+            <button
+              onClick={onNewTransaction}
+              className="mt-5 rounded-xl border border-zinc-700 px-4 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100"
+            >
+              + Lançar primeira despesa
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -237,13 +251,13 @@ export function ExpenseByCategoryList({ categories, month }: ListProps) {
   const total = safe.reduce((s, c) => s + c.totalAmount, 0);
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="mb-5 flex items-baseline justify-between">
+    <div className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mb-5 flex flex-shrink-0 items-baseline justify-between">
         <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Onde seu dinheiro foi</p>
         <p className="text-xs text-zinc-400 dark:text-zinc-500">{month}</p>
       </div>
 
-      <ul className="flex flex-col gap-4">
+      <ul className="flex flex-1 flex-col gap-4 overflow-y-auto pr-1">
         {displayed.map((cat, i) => {
           const color = resolveColor(cat.color, i);
           const rawPct = Number.isFinite(cat.percentage) && cat.percentage > 0

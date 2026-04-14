@@ -49,7 +49,8 @@ function nextMonth(month: string) {
 
 function monthLabel(month: string) {
   const [y, m] = month.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const label = new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  return label.charAt(0).toUpperCase() + label.slice(1).replace(/ De /g, " de ");
 }
 
 // ─── skeletons ────────────────────────────────────────────────────────────────
@@ -479,7 +480,7 @@ export default function CardDetailPage() {
           >
             <ChevronLeft size={16} />
           </button>
-          <span className="text-sm font-medium capitalize text-zinc-700 dark:text-zinc-300">{monthLabel(month)}</span>
+          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{monthLabel(month)}</span>
           <button
             onClick={handleNext}
             className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"

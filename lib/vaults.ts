@@ -6,6 +6,7 @@ export interface VaultResponse {
   color?: string;
   icon?: string;
   currentBalance: number;
+  totalYieldEarned?: number;
   active: boolean;
   vaultType?: "GENERAL" | "GOAL" | "INVOICE";
   account?: { id: string; name: string; bankName: string; color: string };
@@ -36,6 +37,11 @@ export interface VaultTransactionsResponse {
 
 export async function getVaults(): Promise<VaultResponse[]> {
   const { data } = await api.get<VaultResponse[]>("/vaults");
+  return data;
+}
+
+export async function getVaultById(id: string): Promise<VaultResponse> {
+  const { data } = await api.get<VaultResponse>(`/vaults/${id}`);
   return data;
 }
 

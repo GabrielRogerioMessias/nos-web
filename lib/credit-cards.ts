@@ -39,6 +39,7 @@ export interface InstallmentPlan {
   installmentAmount: number;
   totalInstallments: number;
   currentInstallment: number;
+  paidInstallments: number;
   remainingAmount: number;
   creditCardId: string;
   creditCardName: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronLeft, ChevronRight, X, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { getCreditCards, getInvoice, payInvoice } from "@/lib/credit-cards";
 import { getAccounts } from "@/lib/accounts";
@@ -177,7 +177,7 @@ function InvoiceContent({ invoice, onPayClick, onEditTx, onDeleteTx }: InvoiceCo
         <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
           Fecha {formatDate(invoice.closingDate)} · Vence {formatDate(invoice.dueDate)}
         </p>
-        {!isInvoicePaid && invoice.totalAmount > 0 && (
+        {!isInvoicePaid && invoice.totalAmount > 0 && todayISO() >= invoice.closingDate && (
           <button
             onClick={onPayClick}
             className="mt-5 w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
@@ -364,9 +364,10 @@ function PayInvoiceModal({ cardId, month, amount, onClose, onSuccess, onError }:
 export default function CardDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [card, setCard] = useState<CreditCardResponse | null>(null);
-  const [month, setMonth] = useState(currentMonthISO());
+  const [month, setMonth] = useState(() => searchParams.get("month") ?? currentMonthISO());
   const [invoice, setInvoice] = useState<InvoiceResponse | null>(null);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
   const [invoiceError, setInvoiceError] = useState(false);

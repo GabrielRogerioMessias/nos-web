@@ -2,7 +2,7 @@ import axios from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
 import type { AuthResponse } from "@/types/auth";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8081/api";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const api = axios.create({
   baseURL: BASE_URL,

@@ -5,6 +5,19 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import type { AccountRequest, AccountResponse, AccountType } from "@/types/dashboard";
 
+function maskCurrency(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  const value = parseInt(digits, 10) / 100;
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(value);
+}
+
+function parseCurrency(display: string): number {
+  const digits = display.replace(/\D/g, "");
+  if (!digits) return 0;
+  return parseInt(digits, 10) / 100;
+}
+
 const ACCOUNT_TYPE_OPTIONS = [
   { value: "CHECKING", label: "Conta Corrente" },
   { value: "SAVINGS", label: "Poupança" },
@@ -62,11 +75,11 @@ export function AccountForm({ editing, onSave, onCancel }: AccountFormProps) {
         name: editing.name,
         type: editing.type as AccountType,
         bankName: editing.bankName ?? "",
-        initialBalance: String(editing.initialBalance ?? 0),
+        initialBalance: maskCurrency(String(Math.round((editing.initialBalance ?? 0) * 100))),
         color: editing.color ?? COLOR_OPTIONS[0],
       });
     } else {
-      setValues({ name: "", type: "", bankName: "", initialBalance: "0", color: COLOR_OPTIONS[0] });
+      setValues({ name: "", type: "", bankName: "", initialBalance: "", color: COLOR_OPTIONS[0] });
     }
     setFieldErrors({});
   }, [editing]);
@@ -92,7 +105,7 @@ export function AccountForm({ editing, onSave, onCancel }: AccountFormProps) {
       name: values.name.trim(),
       type: values.type as AccountType,
       bankName: values.bankName.trim() || undefined,
-      initialBalance: parseFloat(values.initialBalance) || 0,
+      initialBalance: parseCurrency(values.initialBalance),
       color: values.color,
     };
 
@@ -137,13 +150,15 @@ export function AccountForm({ editing, onSave, onCancel }: AccountFormProps) {
       <div className="flex flex-col gap-1.5">
         <label className="text-sm text-zinc-600 dark:text-zinc-400">Saldo inicial</label>
         <input
-          type="number"
-          min="0"
-          step="0.01"
+          type="text"
+          inputMode="numeric"
+          placeholder="R$ 0,00"
           value={values.initialBalance}
-          onChange={(e) => handleChange("initialBalance", e.target.value)}
+          onChange={(e) => handleChange("initialBalance", maskCurrency(e.target.value))}
           disabled={!!editing}
-          className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-500 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500"
+          className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400 dark:text-zinc-50 dark:placeholder:text-zinc-600 dark:focus:border-zinc-500 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-500 ${
+            editing ? "border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800" : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
+          }`}
         />
         {editing && (
           <p className="text-xs text-zinc-400 dark:text-zinc-500">

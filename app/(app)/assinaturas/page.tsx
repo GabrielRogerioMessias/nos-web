@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   CreditCard,
   MoreHorizontal,
@@ -309,7 +310,7 @@ interface InstallmentCardProps {
 
 function InstallmentCard({ item, onDelete }: InstallmentCardProps) {
   const pct = item.totalInstallments > 0
-    ? Math.round((item.currentInstallment / item.totalInstallments) * 100)
+    ? Math.round((item.paidInstallments / item.totalInstallments) * 100)
     : 0;
 
   return (
@@ -393,14 +394,34 @@ function InstallmentCard({ item, onDelete }: InstallmentCardProps) {
 
 // ─── empty state ──────────────────────────────────────────────────────────────
 
-function EmptyState({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
+function EmptyState({
+  icon,
+  title,
+  subtitle,
+  ctaLabel,
+  onCta,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  ctaLabel?: string;
+  onCta?: () => void;
+}) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-white px-6 py-16 text-center dark:border-zinc-800 dark:bg-zinc-900">
-      <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-200 py-20 text-center dark:border-zinc-800">
+      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
         {icon}
-      </span>
+      </div>
       <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{title}</p>
-      <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{subtitle}</p>
+      <p className="mt-1 max-w-xs text-xs text-zinc-400 dark:text-zinc-500">{subtitle}</p>
+      {ctaLabel && onCta && (
+        <button
+          onClick={onCta}
+          className="mt-6 flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          <Plus size={14} /> {ctaLabel}
+        </button>
+      )}
     </div>
   );
 }
@@ -410,6 +431,7 @@ function EmptyState({ icon, title, subtitle }: { icon: React.ReactNode; title: s
 type Tab = "recurring" | "installments";
 
 export default function AssinaturasPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("recurring");
   const [recurring, setRecurring] = useState<RecurringTransaction[] | null>(null);
   const [installments, setInstallments] = useState<InstallmentPlan[] | null>(null);
@@ -559,8 +581,10 @@ export default function AssinaturasPage() {
           ) : recurring.length === 0 ? (
             <EmptyState
               icon={<RefreshCw size={22} className="text-zinc-400 dark:text-zinc-500" />}
-              title="Nenhuma assinatura cadastrada"
-              subtitle='Use o botão "Nova assinatura" para registrar Netflix, Spotify, aluguel e outros compromissos recorrentes.'
+              title="Nenhuma assinatura ainda"
+              subtitle="Registre Netflix, Spotify, aluguel e outros compromissos recorrentes para nunca perder um vencimento."
+              ctaLabel="Criar minha primeira assinatura"
+              onCta={() => setShowNewModal(true)}
             />
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -584,7 +608,9 @@ export default function AssinaturasPage() {
             <EmptyState
               icon={<CreditCard size={22} className="text-zinc-400 dark:text-zinc-500" />}
               title="Nenhum parcelamento ativo"
-              subtitle="Parcelamentos de cartão de crédito aparecem aqui."
+              subtitle="Parcelamentos são criados ao lançar uma compra parcelada na fatura do seu cartão de crédito."
+              ctaLabel="Ver meus cartões"
+              onCta={() => router.push("/cartoes")}
             />
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">

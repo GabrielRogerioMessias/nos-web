@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, AlertTriangle, X } from "lucide-react";
 import {
   getCreditCards,
   getCreditCard,
@@ -10,6 +11,7 @@ import {
   deleteCreditCard,
   getInvoice,
 } from "@/lib/credit-cards";
+import { getAccounts } from "@/lib/accounts";
 import type { CreditCardResponse, CreditCardRequest, InvoiceResponse } from "@/types/dashboard";
 import { SlideOver } from "@/components/ui/SlideOver";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
@@ -27,13 +29,22 @@ function currentMonthISO() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function nextMonthISO(iso: string) {
+  const [y, m] = iso.split("-").map(Number);
+  const d = new Date(y, m, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export default function CartoesPage() {
+  const router = useRouter();
   const [cards, setCards] = useState<CreditCardResponse[] | null>(null);
   const [invoices, setInvoices] = useState<Record<string, InvoiceResponse | null>>({});
   const [invoiceLoading, setInvoiceLoading] = useState<Record<string, boolean>>({});
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState<CreditCardResponse | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
+  const [hasAccounts, setHasAccounts] = useState<boolean | null>(null);
+  const [showNoAccountsWarning, setShowNoAccountsWarning] = useState(false);
   // ref para cancelar fetches obsoletos ao desmontar
   const abortRef = useRef<AbortController | null>(null);
 
@@ -61,7 +72,14 @@ export default function CartoesPage() {
         try {
           const data = await getInvoice(card.id, month);
           if (ctrl.signal.aborted) return;
-          setInvoices((prev) => ({ ...prev, [card.id]: data }));
+          // shift: fatura do mês atual paga → exibe o próximo ciclo em destaque
+          if (data.paid) {
+            const next = nextMonthISO(month);
+            const nextData = await getInvoice(card.id, next).catch(() => data);
+            if (!ctrl.signal.aborted) setInvoices((prev) => ({ ...prev, [card.id]: nextData }));
+          } else {
+            setInvoices((prev) => ({ ...prev, [card.id]: data }));
+          }
         } catch {
           if (ctrl.signal.aborted) return;
           setInvoices((prev) => ({ ...prev, [card.id]: null }));
@@ -87,10 +105,20 @@ export default function CartoesPage() {
 
   useEffect(() => {
     loadCards();
+    getAccounts()
+      .then((list) => setHasAccounts(list.some((a) => a.active)))
+      .catch(() => setHasAccounts(false));
     return () => { abortRef.current?.abort(); };
   }, [loadCards]);
 
-  function openNew() { setEditing(null); setSlideOpen(true); }
+  function openNew() {
+    if (hasAccounts === false) {
+      setShowNoAccountsWarning(true);
+      return;
+    }
+    setEditing(null);
+    setSlideOpen(true);
+  }
   function openEdit(card: CreditCardResponse) { setEditing(card); setSlideOpen(true); }
   function closeSlide() { setSlideOpen(false); setEditing(null); }
 
@@ -194,6 +222,7 @@ export default function CartoesPage() {
             onDelete={handleDelete}
             onPaymentSuccess={handlePaymentSuccess}
             onPaymentError={(msg) => addToast(msg, "error")}
+            onAddNew={openNew}
           />
         )}
       </div>
@@ -201,6 +230,46 @@ export default function CartoesPage() {
       <SlideOver open={slideOpen} onClose={closeSlide} title={editing ? "Editar cartão" : "Novo cartão"}>
         <CreditCardForm editing={editing} onSave={handleSave} onCancel={closeSlide} />
       </SlideOver>
+
+      {/* aviso: nenhuma conta cadastrada */}
+      {showNoAccountsWarning && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setShowNoAccountsWarning(false)} />
+          <div className="fixed inset-x-4 top-1/2 z-50 mx-auto max-w-sm -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/40">
+                  <AlertTriangle size={17} className="text-amber-500" />
+                </div>
+                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Conta bancária necessária</p>
+              </div>
+              <button
+                onClick={() => setShowNoAccountsWarning(false)}
+                className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                <X size={15} />
+              </button>
+            </div>
+            <p className="mb-5 text-sm text-zinc-500 dark:text-zinc-400">
+              Para cadastrar um cartão de crédito, você precisa ter pelo menos uma conta bancária ativa. As faturas serão vinculadas a ela.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowNoAccountsWarning(false)}
+                className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              >
+                Agora não
+              </button>
+              <button
+                onClick={() => { setShowNoAccountsWarning(false); router.push("/contas"); }}
+                className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                Criar conta bancária
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </>

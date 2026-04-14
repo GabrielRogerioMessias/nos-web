@@ -4,6 +4,19 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/Input";
 import type { CreditCardRequest, CreditCardResponse } from "@/types/dashboard";
 
+function maskCurrency(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  const value = parseInt(digits, 10) / 100;
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(value);
+}
+
+function parseCurrency(display: string): number {
+  const digits = display.replace(/\D/g, "");
+  if (!digits) return 0;
+  return parseInt(digits, 10) / 100;
+}
+
 const COLOR_OPTIONS = [
   "#18181b", "#3f3f46", "#71717a", "#a1a1aa",
   "#0ea5e9", "#6366f1", "#8b5cf6", "#ec4899",
@@ -77,7 +90,7 @@ export function CreditCardForm({ editing, onSave, onCancel }: CreditCardFormProp
         brand: editing.brand ?? "",
         closingDay: String(editing.closingDay),
         dueDay: String(editing.dueDay),
-        creditLimit: editing.creditLimit ? String(editing.creditLimit) : "",
+        creditLimit: editing.creditLimit ? maskCurrency(String(Math.round(editing.creditLimit * 100))) : "",
         color: editing.color ?? COLOR_OPTIONS[0],
       });
     } else {
@@ -108,7 +121,7 @@ export function CreditCardForm({ editing, onSave, onCancel }: CreditCardFormProp
       brand: values.brand || undefined,
       closingDay: parseInt(values.closingDay),
       dueDay: parseInt(values.dueDay),
-      creditLimit: values.creditLimit ? parseFloat(values.creditLimit) : undefined,
+      creditLimit: values.creditLimit ? parseCurrency(values.creditLimit) : undefined,
       color: values.color,
     };
 
@@ -181,15 +194,17 @@ export function CreditCardForm({ editing, onSave, onCancel }: CreditCardFormProp
         />
       </div>
 
-      <Input
-        label="Limite (opcional)"
-        type="number"
-        min="0"
-        step="0.01"
-        placeholder="0,00"
-        value={values.creditLimit}
-        onChange={(e) => handleChange("creditLimit", e.target.value)}
-      />
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm text-zinc-600 dark:text-zinc-400">Limite (opcional)</label>
+        <input
+          type="text"
+          inputMode="numeric"
+          placeholder="R$ 0,00"
+          value={values.creditLimit}
+          onChange={(e) => handleChange("creditLimit", maskCurrency(e.target.value))}
+          className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-600 dark:focus:border-zinc-500"
+        />
+      </div>
 
       {/* cor */}
       <div className="flex flex-col gap-1.5">

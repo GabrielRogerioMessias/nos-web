@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { ChevronRight, Pencil, Trash2, MoreHorizontal } from "lucide-react";
+import { ChevronRight, Pencil, Trash2, MoreHorizontal, CreditCard, Plus } from "lucide-react";
 import type { CreditCardResponse, InvoiceResponse } from "@/types/dashboard";
 import { getInvoice } from "@/lib/credit-cards";
 import { InvoicePaymentModal } from "@/components/credit-cards/InvoicePaymentModal";
@@ -234,10 +234,12 @@ function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete, onPay
   const accentColor = card.color ?? "#a1a1aa";
   const fatura = invoice?.totalAmount ?? 0;
   const limite = card.creditLimit ?? 0;
-  // quando paga, o back já libera o limite — disponivel reflete o estado real do cartão
-  const disponivel = Math.max(0, limite - (isInvoicePaid ? 0 : fatura));
-  const pct = limite > 0 && !isInvoicePaid ? (fatura / limite) * 100 : 0;
-  const isOver = pct > 100;
+  // usa availableLimit da API como fonte primária; fallback manual apenas se ausente
+  const disponivel = card.availableLimit != null
+    ? card.availableLimit
+    : Math.max(0, limite - (isInvoicePaid ? 0 : fatura));
+  const pct = limite > 0 ? Math.min(100, ((limite - disponivel) / limite) * 100) : 0;
+  const isOver = limite > 0 && disponivel < 0;
 
   // fatura fechada: hoje >= closingDate, há valor e não foi paga
   const isClosed = !!invoice?.closingDate && fatura > 0 && !isInvoicePaid &&
@@ -270,7 +272,7 @@ function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete, onPay
   return (
     <div className={`flex flex-col rounded-3xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950${!card.active ? " opacity-60" : ""}`}>
       {/* ── corpo clicável ── */}
-      <Link href={`/cartoes/${card.id}`} className="group flex flex-col gap-6 p-6">
+      <Link href={`/cartoes/${card.id}${invoice?.month ? `?month=${invoice.month}` : ""}`} className="group flex flex-col gap-6 p-6">
 
         {/* ── cabeçalho: nome + bandeira à esq, status + menu à dir ── */}
         <div className="flex items-start justify-between gap-3">
@@ -425,16 +427,28 @@ interface CreditCardListProps {
   onDelete: (id: string) => Promise<void>;
   onPaymentSuccess: (cardId: string) => void;
   onPaymentError: (msg: string) => void;
+  onAddNew?: () => void;
 }
 
-export function CreditCardList({ items, onEdit, onDelete, onPaymentSuccess, onPaymentError }: CreditCardListProps) {
+export function CreditCardList({ items, onEdit, onDelete, onPaymentSuccess, onPaymentError, onAddNew }: CreditCardListProps) {
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-16 text-center dark:border-zinc-800 dark:bg-zinc-950">
-        <p className="text-sm text-zinc-400 dark:text-zinc-500">Nenhum cartão cadastrado.</p>
-        <p className="mt-1 text-xs text-zinc-300 dark:text-zinc-600">
-          Clique em &quot;Novo cartão&quot; para começar.
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-200 py-20 text-center dark:border-zinc-800">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+          <CreditCard size={24} className="text-zinc-400 dark:text-zinc-500" />
+        </div>
+        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Nenhum cartão ainda</p>
+        <p className="mt-1 max-w-xs text-xs text-zinc-400 dark:text-zinc-500">
+          Adicione seu cartão de crédito para centralizar suas faturas e controlar seu limite.
         </p>
+        {onAddNew && (
+          <button
+            onClick={onAddNew}
+            className="mt-6 flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            <Plus size={14} /> Adicionar meu primeiro cartão
+          </button>
+        )}
       </div>
     );
   }

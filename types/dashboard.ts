@@ -134,6 +134,7 @@ export interface CreditCardResponse {
   closingDay: number;
   dueDay: number;
   creditLimit?: number;
+  availableLimit?: number;
   color?: string;
   active: boolean;
 }

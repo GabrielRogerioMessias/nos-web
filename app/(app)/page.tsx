@@ -226,26 +226,34 @@ function FreeCashCard({ data }: { data: CashflowResponse }) {
 
       {/* detalhamento didático */}
       <div className="mt-4 flex flex-col gap-1.5 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50">
-        {/* linha 1 — faturas total */}
+        {/* linha 1 — saldo bruto nas contas */}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">Faturas (Total)</span>
+          <span className="text-xs text-zinc-600 dark:text-zinc-300">Saldo nas Contas</span>
+          <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">
+            {formatCurrency(data.currentBalance)}
+          </span>
+        </div>
+
+        {/* linha 2 — faturas atuais */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">(-) Faturas Atuais</span>
           <span className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
             – {formatCurrency(invoices)}
           </span>
         </div>
 
-        {/* linha 2 — saldo reservado em cofre */}
+        {/* linha 3 — reservado em cofre */}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-emerald-600 dark:text-emerald-500">Saldo Reservado em Cofre</span>
+          <span className="text-xs text-emerald-600 dark:text-emerald-500">(+) Reservado em Cofre</span>
           <span className="text-xs tabular-nums text-emerald-600 dark:text-emerald-500">
             + {formatCurrency(saved)}
           </span>
         </div>
 
-        {/* linha 3 — fatura pendente (só se > 0) */}
+        {/* linha 4 — fatura descoberta (só se > 0) */}
         {pending > 0 && (
           <div className="flex items-center justify-between border-t border-zinc-200 pt-1.5 dark:border-zinc-700">
-            <span className="text-xs font-medium text-red-500 dark:text-red-400">Fatura Pendente</span>
+            <span className="text-xs font-medium text-red-500 dark:text-red-400">(=) Fatura Descoberta</span>
             <span className="text-xs font-medium tabular-nums text-red-500 dark:text-red-400">
               – {formatCurrency(pending)}
             </span>

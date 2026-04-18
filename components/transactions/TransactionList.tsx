@@ -3,7 +3,16 @@
 import { useState } from "react";
 import { ArrowRightLeft, CreditCard, Landmark, Lock, Pencil, Trash2, Wallet } from "lucide-react";
 import { DeleteTransactionModal } from "@/components/transactions/DeleteTransactionModal";
-import type { TransactionResponse } from "@/types/dashboard";
+import { VaultReversalModal } from "@/components/transactions/VaultReversalModal";
+import type { TransactionResponse, AccountResponse } from "@/types/dashboard";
+
+function isVaultDescription(tx: TransactionResponse): boolean {
+  const desc = tx.description?.toLowerCase() ?? "";
+  return (
+    desc.includes("cofre") ||
+    (desc.includes("meta") && (desc.includes("guardado") || desc.includes("resgate") || desc.includes("depósito") || desc.includes("deposito")))
+  );
+}
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -106,7 +115,14 @@ function TransactionRow({ tx, readOnly = false, onEdit, onDeleteRequest }: Trans
   const isInvoiceLocked = tx.invoicePaid === true;
   // transações de cartão de crédito são somente-leitura no extrato (edição exige lógica de parcelas)
   const isCreditCardTx = !!tx.creditCard;
-  const isLocked = readOnly || isInvoiceLocked || isCreditCardTx;
+  // transações de cofre são gerenciadas pela tela de Cofres — sem ações no extrato
+  // usa vaultId como fonte primária; fallback por descrição caso a API não retorne o campo
+  const isVaultTx = !!tx.vaultId || isVaultDescription(tx);
+  // parcelas de plano parcelado são geradas automaticamente — bloqueadas pelo back-end
+  const isInstallmentTx = !!tx.installmentPlanId;
+  // bloqueio sistêmico: qualquer transação gerenciada por outro subsistema
+  const isSystemLocked = isVaultTx || isInstallmentTx;
+  const isLocked = readOnly || isInvoiceLocked || isCreditCardTx || isSystemLocked;
 
   const amountColor = isExpense
     ? "text-zinc-500 dark:text-zinc-400"
@@ -134,7 +150,11 @@ function TransactionRow({ tx, readOnly = false, onEdit, onDeleteRequest }: Trans
           <span className="text-xs tabular-nums text-zinc-400 dark:text-zinc-500">
             {formatDate(tx.transactionDate)}
           </span>
-          {!isLocked && (
+          {isSystemLocked ? (
+            <span className="p-1">
+              <Lock size={12} className="text-zinc-300 dark:text-zinc-700" />
+            </span>
+          ) : !isLocked ? (
             <>
               <button
                 onClick={() => onEdit(tx)}
@@ -151,7 +171,7 @@ function TransactionRow({ tx, readOnly = false, onEdit, onDeleteRequest }: Trans
                 <Trash2 size={13} />
               </button>
             </>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
@@ -163,11 +183,12 @@ function TransactionRow({ tx, readOnly = false, onEdit, onDeleteRequest }: Trans
 interface TransactionListProps {
   transactions: TransactionResponse[];
   readOnly?: boolean;
+  accounts?: AccountResponse[];
   onEdit: (tx: TransactionResponse) => void;
   onDeleteSuccess: (message: string) => void;
 }
 
-export function TransactionList({ transactions, readOnly = false, onEdit, onDeleteSuccess }: TransactionListProps) {
+export function TransactionList({ transactions, readOnly = false, accounts = [], onEdit, onDeleteSuccess }: TransactionListProps) {
   const [pendingDelete, setPendingDelete] = useState<TransactionResponse | null>(null);
 
   if (transactions.length === 0) {
@@ -196,14 +217,26 @@ export function TransactionList({ transactions, readOnly = false, onEdit, onDele
       </div>
 
       {pendingDelete && !pendingDelete.invoicePaid && !readOnly && (
-        <DeleteTransactionModal
-          tx={pendingDelete}
-          onClose={() => setPendingDelete(null)}
-          onSuccess={(message) => {
-            setPendingDelete(null);
-            onDeleteSuccess(message);
-          }}
-        />
+        (!!pendingDelete.vaultId || isVaultDescription(pendingDelete)) ? (
+          <VaultReversalModal
+            tx={pendingDelete}
+            accounts={accounts}
+            onClose={() => setPendingDelete(null)}
+            onSuccess={(message) => {
+              setPendingDelete(null);
+              onDeleteSuccess(message);
+            }}
+          />
+        ) : (
+          <DeleteTransactionModal
+            tx={pendingDelete}
+            onClose={() => setPendingDelete(null)}
+            onSuccess={(message) => {
+              setPendingDelete(null);
+              onDeleteSuccess(message);
+            }}
+          />
+        )
       )}
     </>
   );

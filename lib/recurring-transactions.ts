@@ -15,6 +15,7 @@ export interface RecurringTransaction {
   startDate: string;
   nextDueDate?: string;
   active: boolean;
+  totalAmountPaid?: number;
 }
 
 export async function getRecurringTransactions(active?: boolean): Promise<RecurringTransaction[]> {

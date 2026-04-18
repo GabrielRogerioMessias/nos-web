@@ -15,6 +15,7 @@ import {
   getRecurringTransactions,
   toggleRecurringTransaction,
   deleteRecurringTransaction,
+  payRecurringTransaction,
   type RecurringTransaction,
 } from "@/lib/recurring-transactions";
 import {
@@ -216,20 +217,46 @@ interface RecurringCardProps {
   item: RecurringTransaction;
   onToggle: (id: string) => Promise<void>;
   onDelete: (item: RecurringTransaction) => void;
+  onPaid: (id: string) => void;
 }
 
-function RecurringCard({ item, onToggle, onDelete }: RecurringCardProps) {
+function isDueSoon(nextDueDate?: string): boolean {
+  if (!nextDueDate) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(nextDueDate + "T00:00:00");
+  const diffDays = (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+  return diffDays <= 5; // vence hoje ou nos próximos 5 dias
+}
+
+function RecurringCard({ item, onToggle, onDelete, onPaid }: RecurringCardProps) {
   const [toggling, setToggling] = useState(false);
+  const [paying, setPaying] = useState(false);
   const isIncome = item.type === "INCOME";
   const freqLabel = item.frequency === "MONTHLY" ? "Mensal" : "Anual";
+  const pending = item.active && isDueSoon(item.nextDueDate);
 
   async function handleToggle() {
     setToggling(true);
     await onToggle(item.id).finally(() => setToggling(false));
   }
 
+  async function handlePay() {
+    setPaying(true);
+    try {
+      await payRecurringTransaction(item.id);
+      onPaid(item.id);
+    } finally {
+      setPaying(false);
+    }
+  }
+
   return (
-    <div className={`flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5 transition-opacity dark:border-zinc-800 dark:bg-zinc-900 ${!item.active ? "opacity-60" : ""}`}>
+    <div className={`flex flex-col gap-4 rounded-2xl border bg-white p-5 transition-opacity dark:bg-zinc-900 ${
+      pending
+        ? "border-zinc-400 dark:border-zinc-600"
+        : "border-zinc-200 dark:border-zinc-800"
+    } ${!item.active ? "opacity-60" : ""}`}>
       {/* cabeçalho */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -276,6 +303,24 @@ function RecurringCard({ item, onToggle, onDelete }: RecurringCardProps) {
         </span>
       </div>
 
+      {/* total pago */}
+      {item.totalAmountPaid != null && item.totalAmountPaid > 0 && (
+        <p className="text-xs text-zinc-400 dark:text-zinc-500">
+          Já custou <span className="tabular-nums">{formatCurrency(item.totalAmountPaid)}</span> no total
+        </p>
+      )}
+
+      {/* botão confirmar pagamento */}
+      {pending && (
+        <button
+          onClick={handlePay}
+          disabled={paying}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+        >
+          {paying ? "Confirmando..." : "Confirmar Pagamento"}
+        </button>
+      )}
+
       {/* rodapé: próximo vencimento + switch */}
       <div className="flex items-center justify-between border-t border-zinc-100 pt-3 dark:border-zinc-800">
         <div>
@@ -306,15 +351,16 @@ function RecurringCard({ item, onToggle, onDelete }: RecurringCardProps) {
 interface InstallmentCardProps {
   item: InstallmentPlan;
   onDelete: (item: InstallmentPlan) => void;
+  finished?: boolean;
 }
 
-function InstallmentCard({ item, onDelete }: InstallmentCardProps) {
+function InstallmentCard({ item, onDelete, finished = false }: InstallmentCardProps) {
   const pct = item.totalInstallments > 0
     ? Math.round((item.paidInstallments / item.totalInstallments) * 100)
     : 0;
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className={`flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 ${finished ? "opacity-50 grayscale" : ""}`}>
       {/* cabeçalho */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -369,13 +415,22 @@ function InstallmentCard({ item, onDelete }: InstallmentCardProps) {
           </p>
         </div>
         <div className="min-w-0 flex flex-col items-end">
-          <p className="text-xs text-zinc-400 dark:text-zinc-500">Restante</p>
-          <p
-            className="mt-0.5 truncate text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-50"
-            title={formatCurrency(item.remainingAmount)}
-          >
-            {formatCurrency(item.remainingAmount)}
-          </p>
+          {finished ? (
+            <>
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">Status</p>
+              <p className="mt-0.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400">Concluído</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">Restante</p>
+              <p
+                className="mt-0.5 truncate text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-50"
+                title={formatCurrency(item.remainingAmount)}
+              >
+                {formatCurrency(item.remainingAmount)}
+              </p>
+            </>
+          )}
         </div>
       </div>
 
@@ -465,8 +520,7 @@ export default function AssinaturasPage() {
     const data = await getInstallmentPlans().catch(() => null);
     // normaliza resposta paginada { content: [...] } ou array direto
     const raw = Array.isArray(data) ? data : (data as unknown as { content: InstallmentPlan[] })?.content ?? [];
-    // filtra apenas ativos (exclui cancelados/concluídos)
-    setInstallments(raw.filter((p) => p.active));
+    setInstallments(raw);
   }, []);
 
   useEffect(() => { loadRecurring(); }, [loadRecurring]);
@@ -482,6 +536,13 @@ export default function AssinaturasPage() {
     } catch {
       addToast("Erro ao alterar o status.", "error");
     }
+  }
+
+  // confirmar pagamento manual
+  async function handlePaid(id: string) {
+    await loadRecurring();
+    addToast("Pagamento confirmado!");
+    window.dispatchEvent(new CustomEvent("transaction-updated"));
   }
 
   // excluir assinatura
@@ -550,9 +611,9 @@ export default function AssinaturasPage() {
             }`}
           >
             Assinaturas
-            {recurring !== null && recurring.length > 0 && (
+            {recurring !== null && recurring.filter((r) => r.active).length > 0 && (
               <span className="ml-1.5 rounded-full bg-zinc-200 px-1.5 py-0.5 text-xs dark:bg-zinc-600">
-                {recurring.length}
+                {recurring.filter((r) => r.active).length}
               </span>
             )}
           </button>
@@ -566,64 +627,100 @@ export default function AssinaturasPage() {
             }`}
           >
             Parcelamentos
-            {installments !== null && installments.length > 0 && (
-              <span className="ml-1.5 rounded-full bg-zinc-200 px-1.5 py-0.5 text-xs dark:bg-zinc-600">
-                {installments.length}
-              </span>
-            )}
+            {installments !== null && (() => {
+              const n = installments.filter((p) => p.active && p.paidInstallments <= p.totalInstallments).length;
+              return n > 0 ? (
+                <span className="ml-1.5 rounded-full bg-zinc-200 px-1.5 py-0.5 text-xs dark:bg-zinc-600">{n}</span>
+              ) : null;
+            })()}
           </button>
         </div>
 
         {/* aba assinaturas */}
-        {tab === "recurring" && (
-          recurring === null ? (
-            <GridSkeleton />
-          ) : recurring.length === 0 ? (
-            <EmptyState
-              icon={<RefreshCw size={22} className="text-zinc-400 dark:text-zinc-500" />}
-              title="Nenhuma assinatura ainda"
-              subtitle="Registre Netflix, Spotify, aluguel e outros compromissos recorrentes para nunca perder um vencimento."
-              ctaLabel="Criar minha primeira assinatura"
-              onCta={() => setShowNewModal(true)}
-            />
-          ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {recurring.map((item) => (
-                <RecurringCard
-                  key={item.id}
-                  item={item}
-                  onToggle={handleToggle}
-                  onDelete={setDeletingRecurring}
-                />
-              ))}
-            </div>
-          )
-        )}
+        {tab === "recurring" && (() => {
+          if (recurring === null) return <GridSkeleton />;
+          const activeList = recurring.filter((r) => r.active);
+          const inactiveList = recurring.filter((r) => !r.active);
+          if (activeList.length === 0 && inactiveList.length === 0) {
+            return (
+              <EmptyState
+                icon={<RefreshCw size={22} className="text-zinc-400 dark:text-zinc-500" />}
+                title="Nenhuma assinatura ainda"
+                subtitle="Registre Netflix, Spotify, aluguel e outros compromissos recorrentes para nunca perder um vencimento."
+                ctaLabel="Criar minha primeira assinatura"
+                onCta={() => setShowNewModal(true)}
+              />
+            );
+          }
+          return (
+            <>
+              {activeList.length > 0 && (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {activeList.map((item) => (
+                    <RecurringCard key={item.id} item={item} onToggle={handleToggle} onDelete={setDeletingRecurring} onPaid={handlePaid} />
+                  ))}
+                </div>
+              )}
+              {activeList.length === 0 && (
+                <p className="text-sm text-zinc-400 dark:text-zinc-500">Nenhuma assinatura ativa no momento.</p>
+              )}
+              {inactiveList.length > 0 && (
+                <>
+                  <hr className="border-zinc-200 dark:border-zinc-800" />
+                  <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Pausadas</p>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {inactiveList.map((item) => (
+                      <RecurringCard key={item.id} item={item} onToggle={handleToggle} onDelete={setDeletingRecurring} onPaid={handlePaid} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          );
+        })()}
 
         {/* aba parcelamentos */}
-        {tab === "installments" && (
-          installments === null ? (
-            <GridSkeleton />
-          ) : installments.length === 0 ? (
-            <EmptyState
-              icon={<CreditCard size={22} className="text-zinc-400 dark:text-zinc-500" />}
-              title="Nenhum parcelamento ativo"
-              subtitle="Parcelamentos são criados ao lançar uma compra parcelada na fatura do seu cartão de crédito."
-              ctaLabel="Ver meus cartões"
-              onCta={() => router.push("/cartoes")}
-            />
-          ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {installments.map((item) => (
-                <InstallmentCard
-                  key={item.id}
-                  item={item}
-                  onDelete={setDeletingInstallment}
-                />
-              ))}
-            </div>
-          )
-        )}
+        {tab === "installments" && (() => {
+          if (installments === null) return <GridSkeleton />;
+          const activeList = installments.filter((p) => p.active && p.paidInstallments <= p.totalInstallments);
+          const finishedList = installments.filter((p) => p.paidInstallments >= p.totalInstallments && p.totalInstallments > 0);
+          if (activeList.length === 0 && finishedList.length === 0) {
+            return (
+              <EmptyState
+                icon={<CreditCard size={22} className="text-zinc-400 dark:text-zinc-500" />}
+                title="Nenhum parcelamento ativo"
+                subtitle="Parcelamentos são criados ao lançar uma compra parcelada na fatura do seu cartão de crédito."
+                ctaLabel="Ver meus cartões"
+                onCta={() => router.push("/cartoes")}
+              />
+            );
+          }
+          return (
+            <>
+              {activeList.length > 0 && (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {activeList.map((item) => (
+                    <InstallmentCard key={item.id} item={item} onDelete={setDeletingInstallment} />
+                  ))}
+                </div>
+              )}
+              {activeList.length === 0 && (
+                <p className="text-sm text-zinc-400 dark:text-zinc-500">Nenhum parcelamento em andamento.</p>
+              )}
+              {finishedList.length > 0 && (
+                <>
+                  <hr className="border-zinc-200 dark:border-zinc-800" />
+                  <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Histórico</p>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {finishedList.map((item) => (
+                      <InstallmentCard key={item.id} item={item} onDelete={setDeletingInstallment} finished />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* modal: excluir assinatura */}

@@ -11,7 +11,6 @@ import {
   toggleAccount,
 } from "@/lib/accounts";
 import type { AccountResponse, AccountRequest } from "@/types/dashboard";
-import { SlideOver } from "@/components/ui/SlideOver";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
 import { AccountForm } from "@/components/accounts/AccountForm";
 import { AccountList, AccountListSkeleton } from "@/components/accounts/AccountList";
@@ -27,7 +26,7 @@ let toastIdCounter = 0;
 
 export default function ContasPage() {
   const [accounts, setAccounts] = useState<AccountResponse[] | null>(null);
-  const [slideOpen, setSlideOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<AccountResponse | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
@@ -60,16 +59,16 @@ export default function ContasPage() {
 
   function openNew() {
     setEditing(null);
-    setSlideOpen(true);
+    setModalOpen(true);
   }
 
   function openEdit(account: AccountResponse) {
     setEditing(account);
-    setSlideOpen(true);
+    setModalOpen(true);
   }
 
-  function closeSlide() {
-    setSlideOpen(false);
+  function closeModal() {
+    setModalOpen(false);
     setEditing(null);
   }
 
@@ -88,7 +87,7 @@ export default function ContasPage() {
         setAccounts((prev) => (prev ? [...prev, enriched] : [enriched]));
         addToast("Conta criada com sucesso.");
       }
-      closeSlide();
+      closeModal();
     } catch {
       addToast("Erro ao salvar a conta. Tente novamente.", "error");
     }
@@ -172,18 +171,14 @@ export default function ContasPage() {
         )}
       </div>
 
-      {/* slide-over com formulário */}
-      <SlideOver
-        open={slideOpen}
-        onClose={closeSlide}
-        title={editing ? "Editar conta" : "Nova conta"}
-      >
+      {/* modal de conta */}
+      {modalOpen && (
         <AccountForm
           editing={editing}
           onSave={handleSave}
-          onCancel={closeSlide}
+          onCancel={closeModal}
         />
-      </SlideOver>
+      )}
 
       {/* toasts */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />

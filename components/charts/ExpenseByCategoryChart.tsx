@@ -223,12 +223,12 @@ export function ExpenseByCategoryList({ categories, month, onNewTransaction }: L
 
   if (safe.length === 0) {
     return (
-      <div className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mb-4 flex flex-shrink-0 items-baseline justify-between">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-4 flex items-baseline justify-between">
           <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Onde seu dinheiro foi</p>
           <p className="text-xs text-zinc-400 dark:text-zinc-500">{month}</p>
         </div>
-        <div className="flex flex-1 flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center py-8">
           <Receipt className="mb-3 h-10 w-10 text-zinc-700" />
           <p className="font-medium text-zinc-300">Nenhuma despesa neste mês</p>
           <p className="mt-1 max-w-sm text-center text-sm text-zinc-500">
@@ -251,13 +251,13 @@ export function ExpenseByCategoryList({ categories, month, onNewTransaction }: L
   const total = safe.reduce((s, c) => s + c.totalAmount, 0);
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="mb-5 flex flex-shrink-0 items-baseline justify-between">
+    <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mb-5 flex items-baseline justify-between">
         <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Onde seu dinheiro foi</p>
         <p className="text-xs text-zinc-400 dark:text-zinc-500">{month}</p>
       </div>
 
-      <ul className="flex flex-1 flex-col gap-4 overflow-y-auto pr-1">
+      <div className="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2 lg:grid-cols-3">
         {displayed.map((cat, i) => {
           const color = resolveColor(cat.color, i);
           const rawPct = Number.isFinite(cat.percentage) && cat.percentage > 0
@@ -265,7 +265,7 @@ export function ExpenseByCategoryList({ categories, month, onNewTransaction }: L
             : total > 0 ? (cat.totalAmount / total) * 100 : 0;
           const pct = Math.min(100, Math.round(rawPct));
           return (
-            <li key={cat.categoryId}>
+            <div key={cat.categoryId}>
               <div className="mb-1.5 flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
                   <span
@@ -285,35 +285,32 @@ export function ExpenseByCategoryList({ categories, month, onNewTransaction }: L
                   </span>
                 </div>
               </div>
-              {/* barra de progresso */}
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{ width: `${pct}%`, backgroundColor: color }}
                 />
               </div>
-            </li>
+            </div>
           );
         })}
+      </div>
 
-        {safe.length > 7 && (
-          <li className="flex items-center justify-between pt-1">
-            <span className="text-xs text-zinc-400 dark:text-zinc-500">
-              +{safe.length - 7} outras categorias
-            </span>
-            <span className="text-xs tabular-nums text-zinc-400 dark:text-zinc-500">
-              {formatCurrencyCompact(safe.slice(7).reduce((s, c) => s + c.totalAmount, 0))}
-            </span>
-          </li>
+      <div className="mt-5 flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-800">
+        {safe.length > 7 ? (
+          <span className="text-xs text-zinc-400 dark:text-zinc-500">
+            +{safe.length - 7} outras · {formatCurrencyCompact(safe.slice(7).reduce((s, c) => s + c.totalAmount, 0))}
+          </span>
+        ) : (
+          <span />
         )}
-
-        <li className="flex items-center justify-between border-t border-zinc-100 pt-3 dark:border-zinc-800">
+        <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Total</span>
           <span className="text-xs font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
             {formatCurrencyFull(total)}
           </span>
-        </li>
-      </ul>
+        </div>
+      </div>
     </div>
   );
 }

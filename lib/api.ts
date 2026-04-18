@@ -46,13 +46,16 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     const status = error.response?.status;
-    const isRefreshUrl = originalRequest?.url?.includes("/auth/refresh");
+    const isAuthUrl =
+      originalRequest?.url?.includes("/auth/refresh") ||
+      originalRequest?.url?.includes("/auth/login") ||
+      originalRequest?.url?.includes("/auth/register");
 
-    // interceta 401 e 403, exceto a própria rota de refresh
+    // interceta 401 e 403, exceto rotas de autenticação
     if (
       (status === 401 || status === 403) &&
       !originalRequest?._retry &&
-      !isRefreshUrl
+      !isAuthUrl
     ) {
       // outro refresh em voo — enfileira e aguarda
       if (isRefreshing) {

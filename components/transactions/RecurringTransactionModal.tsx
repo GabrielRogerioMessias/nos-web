@@ -7,6 +7,7 @@ import { getAccounts } from "@/lib/accounts";
 import { getCategories } from "@/lib/transactions";
 import { getVaults, withdrawFromVault, type VaultResponse } from "@/lib/vaults";
 import type { AccountResponse, CategoryResponse, RecurringFrequency } from "@/types/dashboard";
+import { Modal } from "@/components/ui/Modal";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -49,8 +50,6 @@ interface Props {
   onSuccess: () => void;
 }
 
-// ─── erros ───────────────────────────────────────────────────────────────────
-
 interface Errors {
   description?: string;
   amount?: string;
@@ -62,7 +61,6 @@ interface Errors {
 // ─── componente ──────────────────────────────────────────────────────────────
 
 export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
-  // form state
   const [type, setType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
   const [description, setDescription] = useState("");
   const [amountMasked, setAmountMasked] = useState("");
@@ -72,23 +70,19 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
   const [startDate, setStartDate] = useState(todayISO());
   const [payFirstInstallmentNow, setPayFirstInstallmentNow] = useState(false);
 
-  // remote data
   const [accounts, setAccounts] = useState<AccountResponse[]>([]);
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
 
-  // ui state
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState<string>();
 
-  // intervenção de saldo insuficiente (só quando payFirstInstallmentNow)
   const [intervention, setIntervention] = useState<{
     shortfall: number;
     vaults: VaultResponse[];
     selectedVaultId: string;
   } | null>(null);
 
-  // load accounts + categories
   useEffect(() => {
     getAccounts()
       .then((list) => setAccounts(list.filter((a) => a.active)))
@@ -96,20 +90,9 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
   }, []);
 
   useEffect(() => {
-    getCategories(type)
-      .then(setCategories)
-      .catch(() => {});
+    getCategories(type).then(setCategories).catch(() => {});
     setCategoryId("");
   }, [type]);
-
-  // esc to close
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !saving) onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose, saving]);
 
   function validate(): boolean {
     const errs: Errors = {};
@@ -122,7 +105,6 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
     return Object.keys(errs).length === 0;
   }
 
-  // efetiva a criação da assinatura (chamada após decisão de intervenção ou fluxo normal)
   async function commitRecurring() {
     await createRecurringTransaction({
       type,
@@ -145,8 +127,6 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
     setApiError(undefined);
     try {
       const amount = parseCurrency(amountMasked);
-
-      // verifica saldo apenas quando "pagar agora" está marcado e é despesa
       if (payFirstInstallmentNow && type === "EXPENSE" && accountId) {
         const account = accounts.find((a) => a.id === accountId);
         const balance = account?.currentBalance ?? 0;
@@ -157,10 +137,9 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
             (v) => v.vaultType === "GENERAL" && v.account?.id === accountId && v.currentBalance >= shortfall
           );
           setIntervention({ shortfall, vaults: eligible, selectedVaultId: eligible[0]?.id ?? "" });
-          return; // aguarda decisão do usuário no modal
+          return;
         }
       }
-
       await commitRecurring();
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
@@ -170,7 +149,6 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
     }
   }
 
-  // Opção A: resgatar do cofre e criar assinatura
   async function handleVaultRescue() {
     if (!intervention) return;
     setSaving(true);
@@ -187,7 +165,6 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
     }
   }
 
-  // Opção B: cheque especial — cria normalmente mesmo com saldo negativo
   async function handleOverdraft() {
     if (!intervention) return;
     setSaving(true);
@@ -205,34 +182,47 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
 
   const selectedFreqLabel = FREQUENCY_LABEL[frequency];
 
+  const modalTitle = (
+    <div className="flex items-center gap-2.5">
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
+        <RefreshCw size={15} className="text-zinc-500 dark:text-zinc-400" />
+      </span>
+      <span>Nova Assinatura</span>
+    </div>
+  );
+
+  const footer = (
+    <div className="flex gap-3">
+      <button
+        type="button"
+        onClick={onClose}
+        disabled={saving}
+        className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+      >
+        Cancelar
+      </button>
+      <button
+        form="recurring-form"
+        type="submit"
+        disabled={saving}
+        className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+      >
+        {saving ? "Salvando..." : "Criar assinatura"}
+      </button>
+    </div>
+  );
+
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/40" onClick={!saving ? onClose : undefined} />
-
-      <div
-        className="fixed inset-x-4 top-1/2 z-50 mx-auto max-w-md -translate-y-1/2 overflow-y-auto rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-950"
-        style={{ maxHeight: "92dvh" }}
+      <Modal
+        title={modalTitle}
+        onClose={onClose}
+        disableOverlayClose={saving}
+        footer={footer}
       >
-        {/* ── cabeçalho ── */}
-        <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-2xl border-b border-zinc-100 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
-              <RefreshCw size={15} className="text-zinc-500 dark:text-zinc-400" />
-            </span>
-            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Nova Assinatura</p>
-          </div>
-          <button
-            onClick={onClose}
-            disabled={saving}
-            className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 disabled:opacity-40 dark:hover:bg-zinc-800"
-          >
-            <X size={16} />
-          </button>
-        </div>
+        <form id="recurring-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
 
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5 p-5">
-
-          {/* ── tipo: EXPENSE / INCOME ── */}
+          {/* tipo: EXPENSE / INCOME */}
           <div className="flex rounded-xl border border-zinc-200 bg-zinc-100 p-1 dark:border-zinc-700 dark:bg-zinc-800">
             {(["EXPENSE", "INCOME"] as const).map((t) => (
               <button
@@ -252,12 +242,11 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
             ))}
           </div>
 
-          {/* ── descrição ── */}
+          {/* descrição */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm text-zinc-600 dark:text-zinc-400">Descrição</label>
             <input
               type="text"
-              autoFocus
               placeholder="Ex: Netflix, Spotify, Aluguel…"
               value={description}
               onChange={(e) => { setDescription(e.target.value); setErrors((p) => ({ ...p, description: undefined })); }}
@@ -270,7 +259,7 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
             {errors.description && <p className="text-xs text-red-400">{errors.description}</p>}
           </div>
 
-          {/* ── valor ── */}
+          {/* valor */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm text-zinc-600 dark:text-zinc-400">Valor</label>
             <div className={`flex items-center rounded-lg border transition-colors focus-within:border-zinc-400 dark:focus-within:border-zinc-500 ${
@@ -291,7 +280,7 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
             {errors.amount && <p className="text-xs text-red-400">{errors.amount}</p>}
           </div>
 
-          {/* ── categoria ── */}
+          {/* categoria */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm text-zinc-600 dark:text-zinc-400">Categoria</label>
             <select
@@ -311,7 +300,7 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
             {errors.categoryId && <p className="text-xs text-red-400">{errors.categoryId}</p>}
           </div>
 
-          {/* ── conta bancária ── */}
+          {/* conta bancária */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm text-zinc-600 dark:text-zinc-400">Conta bancária</label>
             <select
@@ -333,7 +322,7 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
             {errors.accountId && <p className="text-xs text-red-400">{errors.accountId}</p>}
           </div>
 
-          {/* ── frequência + vencimento ── */}
+          {/* frequência + vencimento */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm text-zinc-600 dark:text-zinc-400">Frequência</label>
@@ -367,7 +356,7 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
             </div>
           </div>
 
-          {/* ── preview da recorrência ── */}
+          {/* preview da recorrência */}
           <div className="flex items-center gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
             <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-zinc-200 dark:bg-zinc-700">
               <RefreshCw size={13} className="text-zinc-500 dark:text-zinc-400" />
@@ -392,7 +381,7 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
             )}
           </div>
 
-          {/* ── pagar agora ── */}
+          {/* pagar agora */}
           <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-white p-4 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800/60">
             <div className="relative mt-0.5 flex-shrink-0">
               <input
@@ -423,39 +412,20 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
             </div>
           </label>
 
-          {/* ── erro de API ── */}
+          {/* erro de API */}
           {apiError && (
             <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-500 dark:bg-red-950/40 dark:text-red-400">
               {apiError}
             </p>
           )}
-
-          {/* ── botões ── */}
-          <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              {saving ? "Salvando..." : "Criar assinatura"}
-            </button>
-          </div>
         </form>
-      </div>
+      </Modal>
 
-      {/* ── modal de intervenção: saldo insuficiente ── */}
+      {/* modal de intervenção: saldo insuficiente — usa z-[10000] para ficar sobre o Modal base */}
       {intervention && (
         <>
-          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => !saving && setIntervention(null)} />
-          <div className="fixed inset-x-4 top-1/2 z-[60] mx-auto max-w-sm -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="fixed inset-0 z-[10000] bg-black/60" onClick={() => !saving && setIntervention(null)} />
+          <div className="fixed inset-x-4 top-1/2 z-[10000] mx-auto max-w-sm -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/40">

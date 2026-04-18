@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { Modal } from "@/components/ui/Modal";
 import type { GoalRequest, GoalResponse } from "@/types/goals";
 import { getAccounts } from "@/lib/accounts";
 import type { AccountResponse } from "@/types/dashboard";
@@ -42,14 +43,12 @@ interface Props {
 export function GoalFormModal({ editing, onClose, onSave }: Props) {
   const isEdit = !!editing;
 
-  // campos essenciais
   const [name, setName] = useState(editing?.name ?? "");
   const [targetAmount, setTargetAmount] = useState(editing ? String(editing.targetAmount) : "");
   const [targetDate, setTargetDate] = useState(editing?.targetDate ?? "");
   const [accountId, setAccountId] = useState(editing?.vault?.account?.id ?? "");
   const [accounts, setAccounts] = useState<AccountResponse[]>([]);
 
-  // campos avançados
   const [color, setColor] = useState(editing?.color ?? COLORS[6]);
   const [icon, setIcon] = useState(editing?.icon ?? "Target");
   const [monthlyContribution, setMonthlyContribution] = useState(
@@ -62,20 +61,17 @@ export function GoalFormModal({ editing, onClose, onSave }: Props) {
     !!(editing?.monthlyContribution || editing?.yieldRatePercent)
   );
 
-  // erros
   const [nameError, setNameError] = useState<string>();
   const [amountError, setAmountError] = useState<string>();
   const [accountError, setAccountError] = useState<string>();
   const [saving, setSaving] = useState(false);
 
-  // carrega contas ativas
   useEffect(() => {
     getAccounts()
       .then((list) => setAccounts(list.filter((a) => a.active)))
       .catch(() => {});
   }, []);
 
-  // sincroniza ao trocar a meta em edição
   useEffect(() => {
     setName(editing?.name ?? "");
     setTargetAmount(editing ? String(editing.targetAmount) : "");
@@ -85,22 +81,11 @@ export function GoalFormModal({ editing, onClose, onSave }: Props) {
     setIcon(editing?.icon ?? "Target");
     setMonthlyContribution(editing?.monthlyContribution ? String(editing.monthlyContribution) : "");
     setYieldRatePercent(editing?.yieldRatePercent ? String(editing.yieldRatePercent) : "");
-    setAdvancedOpen(
-      !!(editing?.monthlyContribution || editing?.yieldRatePercent)
-    );
+    setAdvancedOpen(!!(editing?.monthlyContribution || editing?.yieldRatePercent));
     setNameError(undefined);
     setAmountError(undefined);
     setAccountError(undefined);
   }, [editing]);
-
-  // ESC fecha
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -135,218 +120,200 @@ export function GoalFormModal({ editing, onClose, onSave }: Props) {
 
   const canSubmit = name.trim() && targetAmount && parseFloat(targetAmount) > 0 && !!accountId;
 
-  return (
-    <>
-      <div className="fixed inset-0 z-50 bg-black/30" onClick={!saving ? onClose : undefined} />
-
-      <div
-        className="fixed inset-x-4 top-1/2 z-50 mx-auto max-w-md -translate-y-1/2 overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950"
-        style={{ maxHeight: "90dvh" }}
+  const footer = (
+    <div className="flex gap-3">
+      <button
+        type="button"
+        onClick={onClose}
+        disabled={saving}
+        className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
       >
-        {/* cabeçalho */}
-        <div className="mb-5 flex items-center justify-between">
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-            {isEdit ? "Editar meta" : "Nova meta"}
-          </p>
-          <button
-            onClick={onClose}
-            disabled={saving}
-            className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 disabled:opacity-40 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-          >
-            <X size={16} />
-          </button>
+        Cancelar
+      </button>
+      <button
+        form="goal-form"
+        type="submit"
+        disabled={saving || !canSubmit}
+        className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+      >
+        {saving ? "Salvando..." : isEdit ? "Salvar alterações" : "Criar meta"}
+      </button>
+    </div>
+  );
+
+  return (
+    <Modal
+      title={isEdit ? "Editar meta" : "Nova meta"}
+      onClose={onClose}
+      disableOverlayClose={saving}
+      footer={footer}
+    >
+      <form id="goal-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+        {/* nome */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm text-zinc-600 dark:text-zinc-400">Nome</label>
+          <input
+            type="text"
+            placeholder="Ex: Reserva de emergência, Viagem"
+            value={name}
+            onChange={(e) => { setName(e.target.value); if (nameError) setNameError(undefined); }}
+            className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:text-zinc-50 dark:placeholder:text-zinc-600 dark:focus:border-zinc-500 ${
+              nameError
+                ? "border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40"
+                : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
+            }`}
+          />
+          {nameError && <p className="text-xs text-red-400">{nameError}</p>}
         </div>
 
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-
-          {/* ── nome ─────────────────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-600 dark:text-zinc-400">Nome</label>
-            <input
-              type="text"
-              placeholder="Ex: Reserva de emergência, Viagem"
-              value={name}
-              autoFocus
-              onChange={(e) => { setName(e.target.value); if (nameError) setNameError(undefined); }}
-              className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:text-zinc-50 dark:placeholder:text-zinc-600 dark:focus:border-zinc-500 ${
-                nameError
-                  ? "border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40"
-                  : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
-              }`}
-            />
-            {nameError && <p className="text-xs text-red-400">{nameError}</p>}
-          </div>
-
-          {/* ── valor alvo ───────────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-600 dark:text-zinc-400">Valor desejado</label>
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              placeholder="0,00"
-              value={targetAmount}
-              onChange={(e) => { setTargetAmount(e.target.value); if (amountError) setAmountError(undefined); }}
-              className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:text-zinc-50 dark:placeholder:text-zinc-600 dark:focus:border-zinc-500 ${
-                amountError
-                  ? "border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40"
-                  : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
-              }`}
-            />
-            {amountError && <p className="text-xs text-red-400">{amountError}</p>}
-          </div>
-
-          {/* ── data alvo ────────────────────────────────────────────────────── */}
-          <DatePicker
-            label="Data alvo (opcional)"
-            value={targetDate}
-            onChange={(iso) => setTargetDate(iso ?? "")}
-            placeholder="Selecionar data"
+        {/* valor alvo */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm text-zinc-600 dark:text-zinc-400">Valor desejado</label>
+          <input
+            type="number"
+            min="0.01"
+            step="0.01"
+            placeholder="0,00"
+            value={targetAmount}
+            onChange={(e) => { setTargetAmount(e.target.value); if (amountError) setAmountError(undefined); }}
+            className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:text-zinc-50 dark:placeholder:text-zinc-600 dark:focus:border-zinc-500 ${
+              amountError
+                ? "border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40"
+                : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
+            }`}
           />
+          {amountError && <p className="text-xs text-red-400">{amountError}</p>}
+        </div>
 
-          {/* ── conta bancária (obrigatório) ──────────────────────────────────── */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-zinc-600 dark:text-zinc-400">Conta bancária</label>
-            <select
-              value={accountId}
-              onChange={(e) => { setAccountId(e.target.value); if (accountError) setAccountError(undefined); }}
-              className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:text-zinc-50 dark:focus:border-zinc-500 dark:[color-scheme:dark] ${
-                accountError
-                  ? "border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40"
-                  : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
-              }`}
-            >
-              <option value="">Selecionar conta...</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.bankName ? `${a.bankName} — ${a.name}` : a.name}
-                </option>
-              ))}
-            </select>
-            {accountError
-              ? <p className="text-xs text-red-400">{accountError}</p>
-              : <p className="text-xs text-zinc-400 dark:text-zinc-500">Onde o dinheiro vai ficar rendendo.</p>
-            }
-          </div>
+        {/* data alvo */}
+        <DatePicker
+          label="Data alvo (opcional)"
+          value={targetDate}
+          onChange={(iso) => setTargetDate(iso ?? "")}
+          placeholder="Selecionar data"
+        />
 
-          {/* ── opções avançadas (collapsible) ────────────────────────────────── */}
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700">
-            <button
-              type="button"
-              onClick={() => setAdvancedOpen((v) => !v)}
-              className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm text-zinc-600 transition-colors hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800/50"
-            >
-              <span>Opções avançadas de projeção</span>
-              <ChevronDown
-                size={15}
-                className={`transition-transform duration-200 ${advancedOpen ? "rotate-180" : ""}`}
-              />
-            </button>
+        {/* conta bancária */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm text-zinc-600 dark:text-zinc-400">Conta bancária</label>
+          <select
+            value={accountId}
+            onChange={(e) => { setAccountId(e.target.value); if (accountError) setAccountError(undefined); }}
+            className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:text-zinc-50 dark:focus:border-zinc-500 dark:[color-scheme:dark] ${
+              accountError
+                ? "border-red-300 bg-red-50/40 dark:border-red-800 dark:bg-red-950/40"
+                : "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
+            }`}
+          >
+            <option value="">Selecionar conta...</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.bankName ? `${a.bankName} — ${a.name}` : a.name}
+              </option>
+            ))}
+          </select>
+          {accountError
+            ? <p className="text-xs text-red-400">{accountError}</p>
+            : <p className="text-xs text-zinc-400 dark:text-zinc-500">Onde o dinheiro vai ficar rendendo.</p>
+          }
+        </div>
 
-            {advancedOpen && (
-              <div className="flex flex-col gap-4 border-t border-zinc-200 px-4 pb-4 pt-4 dark:border-zinc-700">
-                {/* aporte + rendimento */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-sm text-zinc-600 dark:text-zinc-400">Aporte mensal</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0,00"
-                      value={monthlyContribution}
-                      onChange={(e) => setMonthlyContribution(e.target.value)}
-                      className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-600 dark:focus:border-zinc-500"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-sm text-zinc-600 dark:text-zinc-400">Rendimento % a.m.</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0,00"
-                      value={yieldRatePercent}
-                      onChange={(e) => setYieldRatePercent(e.target.value)}
-                      className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-600 dark:focus:border-zinc-500"
-                    />
-                  </div>
+        {/* opções avançadas (collapsible) */}
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700">
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm text-zinc-600 transition-colors hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800/50"
+          >
+            <span>Opções avançadas de projeção</span>
+            <ChevronDown
+              size={15}
+              className={`transition-transform duration-200 ${advancedOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {advancedOpen && (
+            <div className="flex flex-col gap-4 border-t border-zinc-200 px-4 pb-4 pt-4 dark:border-zinc-700">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm text-zinc-600 dark:text-zinc-400">Aporte mensal</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0,00"
+                    value={monthlyContribution}
+                    onChange={(e) => setMonthlyContribution(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-600 dark:focus:border-zinc-500"
+                  />
                 </div>
-
-                <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                  Usados para calcular a projeção de conclusão da meta.
-                </p>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm text-zinc-600 dark:text-zinc-400">Rendimento % a.m.</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0,00"
+                    value={yieldRatePercent}
+                    onChange={(e) => setYieldRatePercent(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-600 dark:focus:border-zinc-500"
+                  />
+                </div>
               </div>
-            )}
-          </div>
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                Usados para calcular a projeção de conclusão da meta.
+              </p>
+            </div>
+          )}
+        </div>
 
-          {/* ── paleta de cores ──────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm text-zinc-600 dark:text-zinc-400">Cor</label>
-            <div className="flex flex-wrap gap-2.5">
-              {COLORS.map((hex) => (
+        {/* paleta de cores */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-zinc-600 dark:text-zinc-400">Cor</label>
+          <div className="flex flex-wrap gap-2.5">
+            {COLORS.map((hex) => (
+              <button
+                key={hex}
+                type="button"
+                onClick={() => setColor(hex)}
+                className="relative h-7 w-7 rounded-full transition-transform hover:scale-110 focus:outline-none"
+                style={{ backgroundColor: hex }}
+                aria-label={hex}
+              >
+                {color === hex && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <span className="h-2.5 w-2.5 rounded-full bg-white/80" />
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* galeria de ícones */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-zinc-600 dark:text-zinc-400">Ícone</label>
+          <div className="grid grid-cols-8 gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900">
+            {ICON_NAMES.map((n) => {
+              const selected = icon === n;
+              return (
                 <button
-                  key={hex}
+                  key={n}
                   type="button"
-                  onClick={() => setColor(hex)}
-                  className="relative h-7 w-7 rounded-full transition-transform hover:scale-110 focus:outline-none"
-                  style={{ backgroundColor: hex }}
-                  aria-label={hex}
+                  onClick={() => setIcon(n)}
+                  title={n}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all ${
+                    selected ? "scale-110" : "hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                  }`}
+                  style={selected ? { backgroundColor: color } : {}}
                 >
-                  {color === hex && (
-                    <span className="absolute inset-0 flex items-center justify-center">
-                      <span className="h-2.5 w-2.5 rounded-full bg-white/80" />
-                    </span>
-                  )}
+                  <DynamicIcon name={n} size={16} color={selected ? "#fff" : "#71717a"} />
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
-
-          {/* ── galeria de ícones ─────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm text-zinc-600 dark:text-zinc-400">Ícone</label>
-            <div className="grid grid-cols-8 gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900">
-              {ICON_NAMES.map((n) => {
-                const selected = icon === n;
-                return (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setIcon(n)}
-                    title={n}
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all ${
-                      selected ? "scale-110" : "hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                    }`}
-                    style={selected ? { backgroundColor: color } : {}}
-                  >
-                    <DynamicIcon name={n} size={16} color={selected ? "#fff" : "#71717a"} />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ── botões ────────────────────────────────────────────────────────── */}
-          <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={saving || !canSubmit}
-              className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              {saving ? "Salvando..." : isEdit ? "Salvar alterações" : "Criar meta"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </>
+        </div>
+      </form>
+    </Modal>
   );
 }

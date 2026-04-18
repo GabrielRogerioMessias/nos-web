@@ -29,6 +29,7 @@ export interface AccountResponse {
   totalBalance: number;
   color: string;
   active: boolean;
+  hasTransactions?: boolean;
 }
 
 export interface AccountBalanceResponse {
@@ -75,6 +76,7 @@ export interface TransactionResponse {
   invoicePaid?: boolean;
   installmentPlanId?: string;
   recurringTransactionId?: string;
+  vaultId?: string;
 }
 
 export interface PageResponse<T> {

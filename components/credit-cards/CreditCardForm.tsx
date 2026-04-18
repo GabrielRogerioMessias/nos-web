@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
 import type { CreditCardRequest, CreditCardResponse } from "@/types/dashboard";
 
 function maskCurrency(raw: string): string {
@@ -42,26 +43,15 @@ interface FieldErrors {
 
 function validate(values: FormState): FieldErrors {
   const errors: FieldErrors = {};
-
-  if (!values.name.trim()) {
-    errors.name = "Nome do cartão é obrigatório.";
-  }
-
+  if (!values.name.trim()) errors.name = "Nome do cartão é obrigatório.";
   const closing = parseInt(values.closingDay);
   const due = parseInt(values.dueDay);
-
-  if (!values.closingDay || isNaN(closing) || closing < 1 || closing > 31) {
+  if (!values.closingDay || isNaN(closing) || closing < 1 || closing > 31)
     errors.closingDay = "Informe um dia válido (1–31).";
-  }
-
-  if (!values.dueDay || isNaN(due) || due < 1 || due > 31) {
+  if (!values.dueDay || isNaN(due) || due < 1 || due > 31)
     errors.dueDay = "Informe um dia válido (1–31).";
-  }
-
-  if (!errors.closingDay && !errors.dueDay && closing >= due) {
+  if (!errors.closingDay && !errors.dueDay && closing >= due)
     errors.dueDay = "O vencimento deve ser posterior ao fechamento.";
-  }
-
   return errors;
 }
 
@@ -73,12 +63,7 @@ interface CreditCardFormProps {
 
 export function CreditCardForm({ editing, onSave, onCancel }: CreditCardFormProps) {
   const [values, setValues] = useState<FormState>({
-    name: "",
-    brand: "",
-    closingDay: "",
-    dueDay: "",
-    creditLimit: "",
-    color: COLOR_OPTIONS[0],
+    name: "", brand: "", closingDay: "", dueDay: "", creditLimit: "", color: COLOR_OPTIONS[0],
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
@@ -101,9 +86,8 @@ export function CreditCardForm({ editing, onSave, onCancel }: CreditCardFormProp
 
   function handleChange(field: keyof FormState, value: string) {
     setValues((prev) => ({ ...prev, [field]: value }));
-    if (fieldErrors[field as keyof FieldErrors]) {
+    if (fieldErrors[field as keyof FieldErrors])
       setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
-    }
   }
 
   function handleBlur(field: keyof FieldErrors) {
@@ -115,7 +99,6 @@ export function CreditCardForm({ editing, onSave, onCancel }: CreditCardFormProp
     e.preventDefault();
     const errs = validate(values);
     if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
-
     const payload: CreditCardRequest = {
       name: values.name.trim(),
       brand: values.brand || undefined,
@@ -124,7 +107,6 @@ export function CreditCardForm({ editing, onSave, onCancel }: CreditCardFormProp
       creditLimit: values.creditLimit ? parseCurrency(values.creditLimit) : undefined,
       color: values.color,
     };
-
     setSaving(true);
     try {
       await onSave(payload);
@@ -137,111 +119,122 @@ export function CreditCardForm({ editing, onSave, onCancel }: CreditCardFormProp
 
   const isValid = Object.keys(validate(values)).length === 0;
 
+  const footer = (
+    <div className="flex gap-3">
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={saving}
+        className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+      >
+        Cancelar
+      </button>
+      <button
+        form="credit-card-form"
+        type="submit"
+        disabled={!isValid || saving}
+        className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+      >
+        {saving ? "Salvando..." : editing ? "Salvar alterações" : "Criar cartão"}
+      </button>
+    </div>
+  );
+
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
-      <Input
-        label="Nome do cartão"
-        placeholder="Ex: Nubank, Inter Gold"
-        value={values.name}
-        onChange={(e) => handleChange("name", e.target.value)}
-        onBlur={() => handleBlur("name")}
-        error={fieldErrors.name}
-      />
-
-      {/* bandeira */}
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm text-zinc-600">Bandeira</label>
-        <div className="flex flex-wrap gap-2">
-          {BRAND_OPTIONS.map((b) => (
-            <button
-              key={b}
-              type="button"
-              onClick={() => handleChange("brand", values.brand === b ? "" : b)}
-              className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
-                values.brand === b
-                  ? "border-zinc-900 bg-zinc-900 text-white"
-                  : "border-zinc-200 text-zinc-600 hover:border-zinc-400"
-              }`}
-            >
-              {b}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
+    <Modal
+      title={editing ? "Editar cartão" : "Novo cartão"}
+      onClose={onCancel}
+      disableOverlayClose={saving}
+      footer={footer}
+    >
+      <form id="credit-card-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         <Input
-          label="Dia de fechamento"
-          type="number"
-          min="1"
-          max="31"
-          placeholder="Ex: 20"
-          value={values.closingDay}
-          onChange={(e) => handleChange("closingDay", e.target.value)}
-          onBlur={() => handleBlur("closingDay")}
-          error={fieldErrors.closingDay}
+          label="Nome do cartão"
+          placeholder="Ex: Nubank, Inter Gold"
+          value={values.name}
+          onChange={(e) => handleChange("name", e.target.value)}
+          onBlur={() => handleBlur("name")}
+          error={fieldErrors.name}
         />
-        <Input
-          label="Dia de vencimento"
-          type="number"
-          min="1"
-          max="31"
-          placeholder="Ex: 27"
-          value={values.dueDay}
-          onChange={(e) => handleChange("dueDay", e.target.value)}
-          onBlur={() => handleBlur("dueDay")}
-          error={fieldErrors.dueDay}
-        />
-      </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm text-zinc-600 dark:text-zinc-400">Limite (opcional)</label>
-        <input
-          type="text"
-          inputMode="numeric"
-          placeholder="R$ 0,00"
-          value={values.creditLimit}
-          onChange={(e) => handleChange("creditLimit", maskCurrency(e.target.value))}
-          className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-600 dark:focus:border-zinc-500"
-        />
-      </div>
-
-      {/* cor */}
-      <div className="flex flex-col gap-1.5">
-        <span className="text-sm text-zinc-600">Cor</span>
-        <div className="flex flex-wrap gap-2">
-          {COLOR_OPTIONS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => handleChange("color", c)}
-              className={`h-6 w-6 rounded-full transition-all ${
-                values.color === c
-                  ? "scale-110 ring-2 ring-white ring-offset-2 ring-offset-white dark:ring-offset-zinc-900"
-                  : ""
-              }`}
-              style={{ backgroundColor: c }}
-            />
-          ))}
+        {/* bandeira */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm text-zinc-600 dark:text-zinc-400">Bandeira</label>
+          <div className="flex flex-wrap gap-2">
+            {BRAND_OPTIONS.map((b) => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => handleChange("brand", values.brand === b ? "" : b)}
+                className={`rounded-md border px-3 py-1.5 text-xs transition-colors ${
+                  values.brand === b
+                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                    : "border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-500"
+                }`}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="sticky bottom-0 mt-auto flex gap-3 border-t border-zinc-100 bg-white pt-5 dark:border-zinc-800 dark:bg-zinc-950">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-        >
-          Cancelar
-        </button>
-        <button
-          type="submit"
-          disabled={!isValid || saving}
-          className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          {saving ? "Salvando..." : editing ? "Salvar alterações" : "Criar cartão"}
-        </button>
-      </div>
-    </form>
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Dia fechamento"
+            type="number"
+            min="1"
+            max="31"
+            placeholder="Ex: 20"
+            value={values.closingDay}
+            onChange={(e) => handleChange("closingDay", e.target.value)}
+            onBlur={() => handleBlur("closingDay")}
+            error={fieldErrors.closingDay}
+          />
+          <Input
+            label="Dia vencimento"
+            type="number"
+            min="1"
+            max="31"
+            placeholder="Ex: 27"
+            value={values.dueDay}
+            onChange={(e) => handleChange("dueDay", e.target.value)}
+            onBlur={() => handleBlur("dueDay")}
+            error={fieldErrors.dueDay}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm text-zinc-600 dark:text-zinc-400">Limite (opcional)</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="R$ 0,00"
+            value={values.creditLimit}
+            onChange={(e) => handleChange("creditLimit", maskCurrency(e.target.value))}
+            className="w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-600 dark:focus:border-zinc-500"
+          />
+        </div>
+
+        {/* cor */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm text-zinc-600 dark:text-zinc-400">Cor</span>
+          <div className="flex flex-wrap gap-2">
+            {COLOR_OPTIONS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => handleChange("color", c)}
+                className={`h-6 w-6 rounded-full transition-all ${
+                  values.color === c
+                    ? "scale-110 ring-2 ring-white ring-offset-2 ring-offset-white dark:ring-offset-zinc-900"
+                    : ""
+                }`}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+        </div>
+      </form>
+    </Modal>
   );
 }

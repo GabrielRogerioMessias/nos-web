@@ -58,14 +58,26 @@ export default function ExtratoPage() {
   const searchParams = useSearchParams();
   const fromDash = searchParams.get("from") === "dash";
   const accountIdParam = searchParams.get("accountId");
+  const startDateParam = searchParams.get("startDate"); // ex: "2026-04-01"
+  const endDateParam = searchParams.get("endDate");     // ex: "2026-04-30"
+  const typeParam = searchParams.get("type") as TransactionFilters["type"] | null;
 
-  const [selectedMonth, setSelectedMonth] = useState(currentMonthISO());
+  // se vier startDate na URL, deduz o mês a partir dela; senão usa mês atual
+  function monthFromStartDate(startDate: string | null): string {
+    if (!startDate) return currentMonthISO();
+    return startDate.slice(0, 7); // "YYYY-MM"
+  }
+
+  const [selectedMonth, setSelectedMonth] = useState(() => monthFromStartDate(startDateParam));
   const [transactions, setTransactions] = useState<TransactionResponse[] | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(0);
-  const [filters, setFilters] = useState<TransactionFilters>(
-    accountIdParam ? { accountId: accountIdParam } : EMPTY_FILTERS
-  );
+  const [filters, setFilters] = useState<TransactionFilters>(() => {
+    const initial: TransactionFilters = {};
+    if (accountIdParam) initial.accountId = accountIdParam;
+    if (typeParam && typeParam !== "ALL") initial.type = typeParam;
+    return initial;
+  });
   const [accounts, setAccounts] = useState<AccountResponse[]>([]);
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionResponse | null>(null);
@@ -269,6 +281,7 @@ export default function ExtratoPage() {
           <TransactionList
             transactions={transactions}
             readOnly={isAccountReadOnly}
+            accounts={allAccounts}
             onEdit={openEdit}
             onDeleteSuccess={(message) => {
               addToast(message);

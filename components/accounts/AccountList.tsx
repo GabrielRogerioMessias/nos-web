@@ -97,13 +97,23 @@ function ActiveActionsMenu({ account, onEdit, onToggle, onDelete }: ActiveAction
             Arquivar conta
           </button>
           <div className="border-t border-zinc-100 dark:border-zinc-800" />
-          <button
-            onClick={() => { setOpen(false); onDelete(); }}
-            className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
-          >
-            <Trash2 size={13} />
-            Excluir
-          </button>
+          {account.hasTransactions ? (
+            <div
+              className="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2.5 text-sm text-zinc-300 dark:text-zinc-600"
+              title="Contas com histórico não podem ser excluídas."
+            >
+              <Trash2 size={13} />
+              Excluir
+            </div>
+          ) : (
+            <button
+              onClick={() => { setOpen(false); onDelete(); }}
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
+            >
+              <Trash2 size={13} />
+              Excluir
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -113,11 +123,12 @@ function ActiveActionsMenu({ account, onEdit, onToggle, onDelete }: ActiveAction
 // ─── menu de ações — conta ARQUIVADA ─────────────────────────────────────────
 
 interface ArchivedActionsMenuProps {
+  account: AccountResponse;
   onToggle: () => void;
   onDelete: () => void;
 }
 
-function ArchivedActionsMenu({ onToggle, onDelete }: ArchivedActionsMenuProps) {
+function ArchivedActionsMenu({ account, onToggle, onDelete }: ArchivedActionsMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -149,13 +160,23 @@ function ArchivedActionsMenu({ onToggle, onDelete }: ArchivedActionsMenuProps) {
             Reativar conta
           </button>
           <div className="border-t border-zinc-100 dark:border-zinc-800" />
-          <button
-            onClick={() => { setOpen(false); onDelete(); }}
-            className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
-          >
-            <Trash2 size={13} />
-            Excluir
-          </button>
+          {account.hasTransactions ? (
+            <div
+              className="flex w-full cursor-not-allowed items-center gap-2 px-3 py-2.5 text-sm text-zinc-300 dark:text-zinc-600"
+              title="Contas com histórico não podem ser excluídas."
+            >
+              <Trash2 size={13} />
+              Excluir
+            </div>
+          ) : (
+            <button
+              onClick={() => { setOpen(false); onDelete(); }}
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
+            >
+              <Trash2 size={13} />
+              Excluir
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -206,7 +227,7 @@ function AccountCard({ account, onEdit, onToggle, onDelete }: AccountCardProps) 
           </div>
 
           {isArchived ? (
-            <ArchivedActionsMenu onToggle={onToggle} onDelete={onDelete} />
+            <ArchivedActionsMenu account={account} onToggle={onToggle} onDelete={onDelete} />
           ) : (
             <ActiveActionsMenu
               account={account}

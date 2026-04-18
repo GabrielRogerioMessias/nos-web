@@ -12,7 +12,6 @@ import {
 } from "@/lib/credit-cards";
 import { getAccounts } from "@/lib/accounts";
 import type { CreditCardResponse, CreditCardRequest, InvoiceResponse } from "@/types/dashboard";
-import { SlideOver } from "@/components/ui/SlideOver";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
 import {
   CreditCardList,
@@ -39,7 +38,7 @@ export default function CartoesPage() {
   const [cards, setCards] = useState<CreditCardResponse[] | null>(null);
   const [invoices, setInvoices] = useState<Record<string, InvoiceResponse | null>>({});
   const [invoiceLoading, setInvoiceLoading] = useState<Record<string, boolean>>({});
-  const [slideOpen, setSlideOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<CreditCardResponse | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const [hasAccounts, setHasAccounts] = useState<boolean | null>(null);
@@ -116,10 +115,10 @@ export default function CartoesPage() {
       return;
     }
     setEditing(null);
-    setSlideOpen(true);
+    setModalOpen(true);
   }
-  function openEdit(card: CreditCardResponse) { setEditing(card); setSlideOpen(true); }
-  function closeSlide() { setSlideOpen(false); setEditing(null); }
+  function openEdit(card: CreditCardResponse) { setEditing(card); setModalOpen(true); }
+  function closeModal() { setModalOpen(false); setEditing(null); }
 
   async function handleSave(payload: CreditCardRequest) {
     try {
@@ -139,7 +138,7 @@ export default function CartoesPage() {
           .finally(() => setInvoiceLoading((prev) => ({ ...prev, [created.id]: false })));
         addToast("Cartão criado com sucesso.");
       }
-      closeSlide();
+      closeModal();
     } catch {
       addToast("Erro ao salvar o cartão. Tente novamente.", "error");
       throw new Error("api_error");
@@ -226,9 +225,9 @@ export default function CartoesPage() {
         )}
       </div>
 
-      <SlideOver open={slideOpen} onClose={closeSlide} title={editing ? "Editar cartão" : "Novo cartão"}>
-        <CreditCardForm editing={editing} onSave={handleSave} onCancel={closeSlide} />
-      </SlideOver>
+      {modalOpen && (
+        <CreditCardForm editing={editing} onSave={handleSave} onCancel={closeModal} />
+      )}
 
       {/* aviso: nenhuma conta cadastrada */}
       {showNoAccountsWarning && (

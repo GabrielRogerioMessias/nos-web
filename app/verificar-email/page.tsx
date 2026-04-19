@@ -21,8 +21,9 @@ function VerifyEmailContent() {
     api
       .post("/auth/verify-email", { token })
       .then(() => {
+        localStorage.removeItem("show_email_verification_banner");
         setStatus("success");
-        setTimeout(() => router.push("/login"), 2000);
+        setTimeout(() => router.push("/"), 2000);
       })
       .catch((err: AxiosError) => {
         void err;

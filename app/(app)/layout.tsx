@@ -3,12 +3,14 @@ import { BottomNav } from "@/components/navigation/BottomNav";
 import { AuthGuard } from "@/components/AuthGuard";
 import { TransactionProvider } from "@/components/transactions/TransactionContext";
 import { CalculatorProvider, CalculatorPortal } from "@/components/ui/CalculatorWidget";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
       <TransactionProvider>
         <CalculatorProvider>
+          <EmailVerificationBanner />
           <div className="flex min-h-screen">
             <Sidebar />
             <main className="flex-1 min-w-0 overflow-x-hidden pb-20 md:pb-0 md:pl-16">

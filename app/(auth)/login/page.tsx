@@ -58,7 +58,10 @@ export default function LoginPage() {
     try {
       const auth = await login(trimmedEmail, values.password);
       saveTokens(auth);
-      router.replace("/");
+      if (auth.warning === "email_not_verified") {
+        localStorage.setItem("show_email_verification_banner", "true");
+      }
+      router.push("/");
     } catch (err) {
       const status = (err as AxiosError)?.response?.status;
       setApiError(
@@ -139,6 +142,13 @@ export default function LoginPage() {
           >
             {loading ? "Entrando..." : "Entrar"}
           </button>
+
+          <Link
+            href="/esqueci-senha"
+            className="text-center text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            Esqueceu sua senha?
+          </Link>
         </form>
       </div>
     </div>

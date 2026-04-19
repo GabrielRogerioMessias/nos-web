@@ -64,6 +64,7 @@ export default function CadastroPage() {
     try {
       const auth = await register(trimmedName, trimmedEmail, values.password);
       saveTokens(auth);
+      localStorage.setItem("show_email_verification_banner", "true");
       router.replace("/");
     } catch (err) {
       const status = (err as AxiosError)?.response?.status;

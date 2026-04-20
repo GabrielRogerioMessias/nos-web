@@ -4,6 +4,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { TransactionProvider } from "@/components/transactions/TransactionContext";
 import { CalculatorProvider, CalculatorPortal } from "@/components/ui/CalculatorWidget";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
+import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,7 +16,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Sidebar />
             <main className="flex-1 min-w-0 overflow-x-hidden pb-20 md:pb-0 md:pl-16">
               <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
-                {children}
+                <OnboardingGate>
+                  {children}
+                </OnboardingGate>
               </div>
             </main>
           </div>

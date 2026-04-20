@@ -1,5 +1,26 @@
 # Mudanças
 
+## [Fase 2 — Tarefa 2.1] Onboarding Express (Momento AHA)
+
+**Data:** 2026-04-20
+
+### O que foi feito
+Implementação do fluxo de onboarding guiado em 3 passos: Conta Bancária → Cartão de Crédito → Cofre de Fatura. O fluxo é resiliente a interrupções e retoma do passo correto ao reabrir o app.
+
+### Arquivos criados
+- `components/onboarding/OnboardingFlow.tsx` — modal de 3 passos não-fechável; Passo 1 cria conta via `POST /accounts`; Passo 2 cria cartão via `POST /credit-cards`; Passo 3 cria cofre INVOICE via `POST /vaults` com loading mínimo de 1.5s e tela de revelação.
+- `components/onboarding/OnboardingGate.tsx` — client component que dispara `Promise.all` com `getAccounts`, `getCreditCards`, `getVaults` para determinar estado do onboarding; exibe skeleton durante verificação; nunca bloqueia por erro de rede.
+
+### Arquivos modificados
+- `app/(app)/layout.tsx` — `children` envolvido em `<OnboardingGate>` para verificação on-mount.
+
+### Decisões arquiteturais
+- `OnboardingGate` separado do `OnboardingFlow` para manter layout como Server Component e isolar a lógica de verificação.
+- Verificação das 3 rotas em paralelo (`Promise.all`) para minimizar latência.
+- Modal sem `title` prop — elimina o botão X nativamente sem modificar `Modal.tsx`.
+- `disableOverlayClose` bloqueia ESC e clique fora durante todo o fluxo.
+- Passo 3 usa `Promise.allSettled` com timer de 1.5s para garantir feedback visual mínimo.
+
 ## [Fase 2 — Bloco 1] Fluxos de Autenticação Completos
 
 **Data:** 2026-04-19

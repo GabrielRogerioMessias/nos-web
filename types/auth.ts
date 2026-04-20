@@ -4,6 +4,7 @@ export interface UserResponse {
   email: string;
   avatarUrl: string | null;
   createdAt: string;
+  emailVerified: boolean;
 }
 
 export interface AuthResponse {

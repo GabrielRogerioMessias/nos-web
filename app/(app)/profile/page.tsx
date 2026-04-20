@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, CheckCircle2, AlertCircle } from "lucide-react";
+import { AxiosError } from "axios";
 import { getMe } from "@/lib/user";
+import { api } from "@/lib/api";
 import { clearTokens } from "@/lib/auth";
 import type { UserResponse } from "@/types/auth";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ToastContainer, type ToastData } from "@/components/ui/Toast";
 
 function getInitials(name: string): string {
   return name
@@ -62,12 +65,35 @@ export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isResending, setIsResending] = useState(false);
+  const [toasts, setToasts] = useState<ToastData[]>([]);
 
   useEffect(() => {
     getMe()
       .then(setUser)
       .finally(() => setLoading(false));
   }, []);
+
+  const addToast = useCallback((message: string, type: ToastData["type"] = "success") => {
+    setToasts((prev) => [...prev, { id: Date.now(), message, type }]);
+  }, []);
+
+  function dismissToast(id: number) {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }
+
+  async function handleResendVerification() {
+    setIsResending(true);
+    try {
+      await api.post("/auth/resend-verification");
+      addToast("E-mail enviado! Verifique sua caixa de entrada.");
+    } catch (err) {
+      const msg = (err as AxiosError<{ message?: string }>)?.response?.data?.message;
+      addToast(msg ?? "Erro ao enviar e-mail. Tente novamente.", "error");
+    } finally {
+      setIsResending(false);
+    }
+  }
 
   function handleLogout() {
     clearTokens();
@@ -76,6 +102,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-md">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <h1 className="mb-8 text-xl font-medium text-zinc-900 dark:text-zinc-50">Perfil</h1>
 
       {loading ? (
@@ -113,6 +140,27 @@ export default function ProfilePage() {
                 disabled
                 className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-500 cursor-not-allowed dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
               />
+              {user.emailVerified ? (
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-500" />
+                  <span className="text-xs text-emerald-700 dark:text-emerald-500">E-mail verificado</span>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5 pt-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <AlertCircle size={13} className="text-amber-500 dark:text-amber-400" />
+                    <span className="text-xs text-amber-600 dark:text-amber-400">E-mail não verificado</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={isResending}
+                    className="w-fit text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  >
+                    {isResending ? "Enviando..." : "Reenviar e-mail de verificação"}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

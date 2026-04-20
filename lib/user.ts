@@ -10,3 +10,8 @@ export async function updateMe(payload: { name: string }): Promise<UserResponse>
   const { data } = await api.put<UserResponse>("/auth/me", payload);
   return data;
 }
+
+export async function completeOnboarding(): Promise<UserResponse> {
+  const { data } = await api.post<UserResponse>("/users/me/complete-onboarding");
+  return data;
+}

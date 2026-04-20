@@ -5,6 +5,7 @@ export interface UserResponse {
   avatarUrl: string | null;
   createdAt: string;
   emailVerified: boolean;
+  onboardingCompleted: boolean;
 }
 
 export interface AuthResponse {

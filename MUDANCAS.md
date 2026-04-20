@@ -1,5 +1,22 @@
 # Mudanças
 
+## [Fase 2 — Tarefa 2.1.b] Onboarding Express — Ajustes cirúrgicos
+
+**Data:** 2026-04-20
+
+### O que foi feito
+Refinamentos no OnboardingFlow: saldo opcional no Passo 1, opção de pular cartão no Passo 2, duas variantes do Passo 3 (com/sem cartão), finalização com `POST /users/me/complete-onboarding` e gatilho substituído por `onboardingCompleted` do UserResponse.
+
+### Arquivos modificados
+- `types/auth.ts` — adicionado `onboardingCompleted: boolean` em `UserResponse`.
+- `lib/user.ts` — adicionado `completeOnboarding()` com `POST /users/me/complete-onboarding`.
+- `components/onboarding/OnboardingFlow.tsx` — Passo 1 com campo de saldo opcional (máscara `maskCurrency`) e detecção de conta existente; Passo 2 com botão "Não tenho cartão" e detecção de cartão existente; Passo 3 com variante com cofre (`Step3WithCard`) e sem cofre (`Step3WithoutCard`); finalização unificada chama `completeOnboarding()` com tratamento de erro.
+- `components/onboarding/OnboardingGate.tsx` — lógica substituída: único `getMe()` verifica `onboardingCompleted`; removidas as 3 chamadas paralelas de listas.
+
+### Decisões arquiteturais
+- Usuários pré-existentes (sem `onboardingCompleted`) veem o onboarding mas não duplicam dados: Passos 1 e 2 detectam conta/cartão existente e oferecem "Sim, usar" antes de criar novo.
+- `OnboardingFlow` perdeu as props `initialStep`/`prefilledAccountId`/`prefilledCardName` — a detecção agora é interna aos passos, simplificando a interface.
+
 ## [Fase 2 — Tarefa 2.1] Onboarding Express (Momento AHA)
 
 **Data:** 2026-04-20

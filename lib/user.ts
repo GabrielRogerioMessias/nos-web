@@ -12,6 +12,6 @@ export async function updateMe(payload: { name: string }): Promise<UserResponse>
 }
 
 export async function completeOnboarding(): Promise<UserResponse> {
-  const { data } = await api.post<UserResponse>("/users/me/complete-onboarding");
+  const { data } = await api.post<UserResponse>("/auth/complete-onboarding");
   return data;
 }

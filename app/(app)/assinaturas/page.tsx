@@ -25,6 +25,7 @@ import {
 } from "@/lib/credit-cards";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
 import { RecurringTransactionModal } from "@/components/transactions/RecurringTransactionModal";
+import { ContextualHelpDrawer } from "@/components/help/ContextualHelpDrawer";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -584,7 +585,10 @@ export default function AssinaturasPage() {
         {/* cabeçalho */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Assinaturas e Parcelas</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Assinaturas e Parcelas</h1>
+              <ContextualHelpDrawer />
+            </div>
             <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
               Transações recorrentes e parcelamentos ativos
             </p>

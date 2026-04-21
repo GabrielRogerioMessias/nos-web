@@ -12,6 +12,7 @@ import { VaultOperationModal } from "@/components/vaults/VaultOperationModal";
 import { VaultStatementSheet } from "@/components/vaults/VaultStatementSheet";
 import { VaultReconcileModal } from "@/components/vaults/VaultReconcileModal";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
+import { ContextualHelpDrawer } from "@/components/help/ContextualHelpDrawer";
 
 type Modal =
   | { type: "create" }
@@ -270,7 +271,10 @@ export default function CofresPage() {
       {/* header */}
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Cofres</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Cofres</h1>
+            <ContextualHelpDrawer />
+          </div>
           {!loading && (
             <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
               Total guardado:{" "}

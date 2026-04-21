@@ -143,18 +143,18 @@ function MetricCard({ label, subtitle, value, icon, iconBg, valueColor }: Metric
     <div className="flex h-full flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             {label}
           </p>
           {subtitle && (
-            <p className="mt-0.5 text-xs text-zinc-300 dark:text-zinc-600">{subtitle}</p>
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{subtitle}</p>
           )}
         </div>
         <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
           {icon}
         </div>
       </div>
-      <p className={`mt-3 text-xl font-bold tabular-nums tracking-tight ${valueColor ?? "text-zinc-900 dark:text-white"}`}>
+      <p className={`mt-3 text-xl font-bold tabular-nums tracking-tight ${valueColor ?? "text-zinc-900 dark:text-zinc-50"}`}>
         {formatCurrency(value)}
       </p>
     </div>
@@ -167,27 +167,27 @@ function WealthCard({ data }: { data: CashflowResponse }) {
   return (
     <div className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Patrimônio
         </p>
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800">
           <PiggyBank size={16} className="text-zinc-500 dark:text-zinc-400" />
         </div>
       </div>
-      <p className="mt-3 text-xl font-bold tabular-nums tracking-tight text-zinc-900 dark:text-white">
+      <p className="mt-3 text-xl font-bold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-50">
         {formatCurrency(data.netAvailableWealth ?? 0)}
       </p>
       <div className="mt-4 flex flex-col">
         <div className="flex items-center justify-between py-1.5">
-          <span className="text-xs text-zinc-400">Saldo nas contas</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Saldo nas contas</span>
           <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{formatCurrency(data.currentBalance ?? 0)}</span>
         </div>
         <div className="flex items-center justify-between py-1.5">
-          <span className="text-xs text-zinc-400">Cofres livres</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Cofres livres</span>
           <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{formatCurrency(data.availableVaultsBalance ?? 0)}</span>
         </div>
         <div className="flex items-center justify-between py-1.5">
-          <span className="text-xs text-zinc-400">Metas financeiras</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Metas financeiras</span>
           <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{formatCurrency(data.goalVaultsBalance ?? 0)}</span>
         </div>
       </div>
@@ -260,36 +260,36 @@ function FreeCashCard({ data }: { data: CashflowResponse }) {
   return (
     <div className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Saldo Livre
         </p>
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800">
           <TrendingUp size={16} className="text-zinc-500 dark:text-zinc-400" />
         </div>
       </div>
-      <p className={`mt-3 text-xl font-bold tabular-nums tracking-tight ${isFreeNegative ? "text-red-400/90" : "text-zinc-900 dark:text-white"}`}>
+      <p className={`mt-3 text-xl font-bold tabular-nums tracking-tight ${isFreeNegative ? "text-red-600 dark:text-red-400" : "text-zinc-900 dark:text-zinc-50"}`}>
         {formatCurrency(data.freeBalance)}
       </p>
 
       {/* detalhamento didático */}
       <div className="mt-4 flex flex-col">
         <div className="flex items-center justify-between py-1.5">
-          <span className="text-xs text-zinc-400">Saldo nas contas</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Saldo nas contas</span>
           <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{formatCurrency(data.currentBalance)}</span>
         </div>
         <div className="flex items-center justify-between py-1.5">
-          <span className="text-xs text-zinc-400">Faturas atuais</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Faturas atuais</span>
           <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">- {formatCurrency(invoices)}</span>
         </div>
         <div className="flex items-center justify-between py-1.5">
-          <span className="text-xs text-zinc-400">Cofre de faturas</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Cofre de faturas</span>
           <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">+ {formatCurrency(saved)}</span>
         </div>
         {faturaDescoberta > 0 && (
           <>
             <hr className="my-2 border-zinc-200 dark:border-zinc-800" />
             <div className="flex items-center justify-between py-1.5">
-              <span className="text-xs text-zinc-400">Fatura a cobrir</span>
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Fatura a cobrir</span>
               <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">- {formatCurrency(faturaDescoberta)}</span>
             </div>
           </>
@@ -312,16 +312,16 @@ function UnifiedBalanceCard({ data }: { data: CashflowResponse }) {
   const isFreeNegative = data.freeBalance < 0;
 
   return (
-    <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-5 md:hidden">
+    <div className="w-full rounded-3xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 md:hidden">
       {/* segmented control */}
-      <div className="mb-5 flex rounded-lg bg-zinc-950 p-1">
+      <div className="mb-5 flex rounded-lg bg-zinc-100 p-1 dark:bg-zinc-950">
         <button
           type="button"
           onClick={() => setTab("free")}
           className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-all duration-200 ${
             tab === "free"
-              ? "bg-zinc-800 text-white shadow-sm"
-              : "text-zinc-500 hover:text-zinc-400"
+              ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
+              : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-300"
           }`}
         >
           Saldo Livre
@@ -331,8 +331,8 @@ function UnifiedBalanceCard({ data }: { data: CashflowResponse }) {
           onClick={() => setTab("wealth")}
           className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-all duration-200 ${
             tab === "wealth"
-              ? "bg-zinc-800 text-white shadow-sm"
-              : "text-zinc-500 hover:text-zinc-400"
+              ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
+              : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-300"
           }`}
         >
           Patrimônio
@@ -343,27 +343,27 @@ function UnifiedBalanceCard({ data }: { data: CashflowResponse }) {
       <div className="relative">
         {/* saldo livre */}
         <div className={`transition-opacity duration-200 ${tab === "free" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0"}`}>
-          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Saldo Livre</p>
-          <p className={`mt-2 text-3xl font-bold tabular-nums tracking-tight ${isFreeNegative ? "text-red-400" : "text-white"}`}>
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Saldo Livre</p>
+          <p className={`mt-2 text-3xl font-bold tabular-nums tracking-tight ${isFreeNegative ? "text-red-600 dark:text-red-400" : "text-zinc-900 dark:text-zinc-50"}`}>
             {formatCurrency(data.freeBalance)}
           </p>
-          <div className="mt-4 flex flex-col divide-y divide-zinc-800">
+          <div className="mt-4 flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800">
             <div className="flex items-center justify-between py-2.5">
-              <span className="text-xs text-zinc-400">Saldo nas contas</span>
-              <span className="text-xs tabular-nums text-zinc-300">{formatCurrency(data.currentBalance)}</span>
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Saldo nas contas</span>
+              <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{formatCurrency(data.currentBalance)}</span>
             </div>
             <div className="flex items-center justify-between py-2.5">
-              <span className="text-xs text-zinc-400">Faturas atuais</span>
-              <span className="text-xs tabular-nums text-zinc-300">– {formatCurrency(invoices)}</span>
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Faturas atuais</span>
+              <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">– {formatCurrency(invoices)}</span>
             </div>
             <div className="flex items-center justify-between py-2.5">
-              <span className="text-xs text-zinc-400">Cofre de faturas</span>
-              <span className="text-xs tabular-nums text-zinc-300">+ {formatCurrency(saved)}</span>
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Cofre de faturas</span>
+              <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">+ {formatCurrency(saved)}</span>
             </div>
             {faturaDescoberta > 0 && (
               <div className="flex items-center justify-between py-2.5">
-                <span className="text-xs text-zinc-400">Fatura a cobrir</span>
-                <span className="text-xs tabular-nums text-red-400">– {formatCurrency(faturaDescoberta)}</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">Fatura a cobrir</span>
+                <span className="text-xs tabular-nums text-red-600 dark:text-red-400">– {formatCurrency(faturaDescoberta)}</span>
               </div>
             )}
           </div>
@@ -371,22 +371,22 @@ function UnifiedBalanceCard({ data }: { data: CashflowResponse }) {
 
         {/* patrimônio */}
         <div className={`transition-opacity duration-200 ${tab === "wealth" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0"}`}>
-          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Patrimônio</p>
-          <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-white">
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Patrimônio</p>
+          <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-50">
             {formatCurrency(data.netAvailableWealth ?? 0)}
           </p>
-          <div className="mt-4 flex flex-col divide-y divide-zinc-800">
+          <div className="mt-4 flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800">
             <div className="flex items-center justify-between py-2.5">
-              <span className="text-xs text-zinc-400">Saldo nas contas</span>
-              <span className="text-xs tabular-nums text-zinc-300">{formatCurrency(data.currentBalance ?? 0)}</span>
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Saldo nas contas</span>
+              <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{formatCurrency(data.currentBalance ?? 0)}</span>
             </div>
             <div className="flex items-center justify-between py-2.5">
-              <span className="text-xs text-zinc-400">Cofres livres</span>
-              <span className="text-xs tabular-nums text-zinc-300">{formatCurrency(data.availableVaultsBalance ?? 0)}</span>
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Cofres livres</span>
+              <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{formatCurrency(data.availableVaultsBalance ?? 0)}</span>
             </div>
             <div className="flex items-center justify-between py-2.5">
-              <span className="text-xs text-zinc-400">Metas financeiras</span>
-              <span className="text-xs tabular-nums text-zinc-300">{formatCurrency(data.goalVaultsBalance ?? 0)}</span>
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Metas financeiras</span>
+              <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{formatCurrency(data.goalVaultsBalance ?? 0)}</span>
             </div>
           </div>
         </div>
@@ -397,18 +397,18 @@ function UnifiedBalanceCard({ data }: { data: CashflowResponse }) {
 
 function UnifiedBalanceCardSkeleton() {
   return (
-    <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-5 md:hidden">
-      <div className="mb-5 flex rounded-lg bg-zinc-950 p-1 gap-1">
-        <div className="flex-1 h-7 animate-pulse rounded-md bg-zinc-800" />
-        <div className="flex-1 h-7 animate-pulse rounded-md bg-zinc-800/50" />
+    <div className="w-full rounded-3xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 md:hidden">
+      <div className="mb-5 flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-950">
+        <div className="h-7 flex-1 animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-800" />
+        <div className="h-7 flex-1 animate-pulse rounded-md bg-zinc-200/70 dark:bg-zinc-800/50" />
       </div>
-      <div className="h-3 w-20 animate-pulse rounded bg-zinc-700" />
-      <div className="mt-2 h-9 w-36 animate-pulse rounded bg-zinc-700" />
-      <div className="mt-4 flex flex-col gap-0 divide-y divide-zinc-800">
+      <div className="h-3 w-20 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
+      <div className="mt-2 h-9 w-36 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
+      <div className="mt-4 flex flex-col gap-0 divide-y divide-zinc-100 dark:divide-zinc-800">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="flex items-center justify-between py-2.5">
-            <div className="h-3 w-28 animate-pulse rounded bg-zinc-800" />
-            <div className="h-3 w-20 animate-pulse rounded bg-zinc-700" />
+            <div className="h-3 w-28 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+            <div className="h-3 w-20 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
           </div>
         ))}
       </div>

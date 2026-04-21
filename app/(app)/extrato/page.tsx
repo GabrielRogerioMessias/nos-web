@@ -16,6 +16,7 @@ import {
   PeriodSummarySkeleton,
 } from "@/components/transactions/TransactionFilters";
 import { createTransaction, updateTransaction } from "@/lib/transactions";
+import { ContextualHelpDrawer } from "@/components/help/ContextualHelpDrawer";
 
 const EMPTY_FILTERS: TransactionFilters = {};
 
@@ -207,7 +208,10 @@ export default function ExtratoPage() {
               </button>
             )}
             <div className="min-w-0">
-              <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Extrato</h1>
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Extrato</h1>
+                <ContextualHelpDrawer />
+              </div>
               {transactions !== null && (
                 <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
                   {transactions.length === 0

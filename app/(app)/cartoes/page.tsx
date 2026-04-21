@@ -20,6 +20,7 @@ import {
 } from "@/components/credit-cards/CreditCardList";
 import { CreditCardForm } from "@/components/credit-cards/CreditCardForm";
 import { NoAccountModal } from "@/components/accounts/NoAccountModal";
+import { ContextualHelpDrawer } from "@/components/help/ContextualHelpDrawer";
 
 let toastId = 0;
 
@@ -193,7 +194,10 @@ export default function CartoesPage() {
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Cartões</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Cartões</h1>
+              <ContextualHelpDrawer />
+            </div>
             {cards !== null && (
               <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
                 {count === 0

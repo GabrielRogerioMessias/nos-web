@@ -14,6 +14,7 @@ import type { AccountResponse, AccountRequest } from "@/types/dashboard";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
 import { AccountForm } from "@/components/accounts/AccountForm";
 import { AccountList, AccountListSkeleton } from "@/components/accounts/AccountList";
+import { ContextualHelpDrawer } from "@/components/help/ContextualHelpDrawer";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -141,7 +142,10 @@ export default function ContasPage() {
         {/* cabeçalho */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Contas</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Contas</h1>
+              <ContextualHelpDrawer />
+            </div>
             <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
               {accounts === null
                 ? ""

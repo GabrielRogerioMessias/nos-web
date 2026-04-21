@@ -13,6 +13,7 @@ import { GoalFormModal } from "@/components/goals/GoalFormModal";
 import { VaultOperationModal } from "@/components/vaults/VaultOperationModal";
 import { VaultStatementSheet } from "@/components/vaults/VaultStatementSheet";
 import { NoAccountModal } from "@/components/accounts/NoAccountModal";
+import { ContextualHelpDrawer } from "@/components/help/ContextualHelpDrawer";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -129,7 +130,10 @@ export default function GoalsPage() {
         {/* cabeçalho */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Metas</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-50">Metas</h1>
+              <ContextualHelpDrawer />
+            </div>
             {goals !== null && (
               <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
                 {activeCount} ativa{activeCount !== 1 ? "s" : ""}

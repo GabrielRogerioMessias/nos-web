@@ -71,6 +71,15 @@ function DataPrivacySection({
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+
+  const canDeleteAccount = deleteConfirmation === "DELETE";
+
+  function closeDeleteModal() {
+    if (isDeleting) return;
+    setDeleteModalOpen(false);
+    setDeleteConfirmation("");
+  }
 
   async function handleExportData() {
     setIsExporting(true);
@@ -97,10 +106,16 @@ function DataPrivacySection({
   }
 
   async function handleDeleteAccount() {
+    if (!canDeleteAccount) {
+      addToast("Digite DELETE para confirmar a exclusão.", "error");
+      return;
+    }
+
     setIsDeleting(true);
     try {
       await deleteAccount();
       setDeleteModalOpen(false);
+      setDeleteConfirmation("");
       clearTokens();
       document.cookie = "accessToken=; Max-Age=0; path=/";
       document.cookie = "refreshToken=; Max-Age=0; path=/";
@@ -117,7 +132,7 @@ function DataPrivacySection({
     <div className="flex gap-3">
       <button
         type="button"
-        onClick={() => setDeleteModalOpen(false)}
+        onClick={closeDeleteModal}
         disabled={isDeleting}
         className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
       >
@@ -126,10 +141,10 @@ function DataPrivacySection({
       <button
         type="button"
         onClick={handleDeleteAccount}
-        disabled={isDeleting}
+        disabled={isDeleting || !canDeleteAccount}
         className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-red-500 dark:hover:bg-red-600"
       >
-        {isDeleting ? "Excluindo..." : "Sim, excluir minha conta"}
+        {isDeleting ? "Excluindo..." : "Excluir permanentemente"}
       </button>
     </div>
   );
@@ -158,7 +173,10 @@ function DataPrivacySection({
 
         <button
           type="button"
-          onClick={() => setDeleteModalOpen(true)}
+          onClick={() => {
+            setDeleteConfirmation("");
+            setDeleteModalOpen(true);
+          }}
           disabled={isExporting || isDeleting}
           className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400 dark:hover:bg-red-950/40"
         >
@@ -169,14 +187,40 @@ function DataPrivacySection({
 
       {deleteModalOpen && (
         <Modal
-          title="Excluir conta permanentemente"
-          onClose={() => setDeleteModalOpen(false)}
+          title="Excluir sua conta?"
+          onClose={closeDeleteModal}
           disableOverlayClose={isDeleting}
           footer={footer}
         >
-          <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-            Tem certeza absoluta? Esta ação apagará todo o seu histórico financeiro, contas, cartões e cofres de forma irreversível.
-          </p>
+          <div className="space-y-5">
+            <div className="space-y-3 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+              <p>Esta ação é permanente e não pode ser desfeita.</p>
+              <div>
+                <p>Todos os seus dados serão apagados:</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  <li>Contas bancárias e saldos</li>
+                  <li>Cartões de crédito e faturas</li>
+                  <li>Cofres e metas</li>
+                  <li>Transações e histórico completo</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Para confirmar, digite DELETE
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value)}
+                disabled={isDeleting}
+                autoComplete="off"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500"
+                placeholder="DELETE"
+              />
+            </div>
+          </div>
         </Modal>
       )}
     </section>

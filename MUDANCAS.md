@@ -1,5 +1,15 @@
 # Mudanças
 
+## [Fase 2 — Ajuste LGPD] Confirmação reforçada de exclusão
+
+**Data:** 2026-04-22
+
+### O que foi feito
+Atualizado o modal de exclusão de conta para usar uma confirmação explícita por digitação de `DELETE`, com texto mais direto e lista dos dados que serão apagados.
+
+### Arquivos modificados
+- `app/(app)/profile/page.tsx` — modal de exclusão revisado com novo título, conteúdo, campo de confirmação e botão destrutivo bloqueado até validação.
+
 ## [Fase 2 — Tarefa 2.4.b] Zona de Perigo LGPD no Perfil
 
 **Data:** 2026-04-22

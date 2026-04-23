@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useCallback, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, CheckCircle2, AlertCircle, Download, Trash2 } from "lucide-react";
+import { useTheme } from "next-themes";
+import { LogOut, CheckCircle2, AlertCircle, Download, Trash2, Moon, Sun } from "lucide-react";
 import { AxiosError } from "axios";
 import { getMe, updateProfile, changePassword, exportUserData, deleteAccount } from "@/lib/user";
 import { api } from "@/lib/api";
 import { clearTokens } from "@/lib/auth";
 import type { UserResponse } from "@/types/auth";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
 
@@ -69,6 +69,41 @@ function ProfileSkeleton() {
           <div className="h-10 w-full rounded-lg bg-zinc-100 dark:bg-zinc-800" />
         </div>
       </div>
+    </div>
+  );
+}
+
+function ProfileHeaderActions({ onLogout }: { onLogout: () => void }) {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setMounted(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  const isDark = resolvedTheme === "dark";
+
+  return (
+    <div className="mt-4 flex justify-center gap-4">
+      <button
+        type="button"
+        onClick={() => setTheme(isDark ? "light" : "dark")}
+        disabled={!mounted}
+        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
+        aria-label={isDark ? "Ativar modo claro" : "Ativar modo escuro"}
+      >
+        {mounted && isDark ? <Sun size={15} strokeWidth={1.7} /> : <Moon size={15} strokeWidth={1.7} />}
+        Tema
+      </button>
+      <button
+        type="button"
+        onClick={onLogout}
+        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-zinc-400 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+      >
+        <LogOut size={15} strokeWidth={1.7} />
+        Sair
+      </button>
     </div>
   );
 }
@@ -517,6 +552,7 @@ export default function ProfilePage() {
               <p className="text-base font-medium text-zinc-900 dark:text-zinc-50">{user.name}</p>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">{user.email}</p>
             </div>
+            <ProfileHeaderActions onLogout={handleLogout} />
           </div>
 
           <div className="mt-6 flex rounded-full border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
@@ -555,23 +591,7 @@ export default function ProfilePage() {
             {activeTab === "security" && <SecuritySection addToast={addToast} />}
 
             {activeTab === "advanced" && (
-              <div className="space-y-8">
-                <section className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide dark:text-zinc-400">Aparência</span>
-                    <ThemeToggle />
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 hover:border-red-100 dark:border-zinc-700 dark:hover:bg-red-950/40 dark:hover:border-red-900"
-                  >
-                    <LogOut size={15} strokeWidth={1.5} />
-                    Sair da conta
-                  </button>
-                </section>
-
-                <DataPrivacySection addToast={addToast} />
-              </div>
+              <DataPrivacySection addToast={addToast} />
             )}
           </div>
         </>

@@ -1,5 +1,19 @@
 # Mudanças
 
+## [Fase 2 — Ajuste UX] Ações globais no cabeçalho do Perfil
+
+**Data:** 2026-04-22
+
+### O que foi feito
+Movidas as ações frequentes de Tema e Sair para o cabeçalho do Perfil, imediatamente abaixo do e-mail do usuário, em botões ghost discretos.
+
+### Arquivos modificados
+- `app/(app)/profile/page.tsx` — adicionada linha de ações no cabeçalho com ícone Sol/Lua + "Tema" e LogOut + "Sair"; removidos Aparência e Logout da aba Avançado.
+
+### Decisões arquiteturais
+- A aba Avançado passa a concentrar apenas a Zona de Perigo/LGPD.
+- A troca de tema continua usando `next-themes`, com proteção contra hydration mismatch.
+
 ## [Fase 2 — Ajuste UX] Perfil com abas minimalistas
 
 **Data:** 2026-04-22

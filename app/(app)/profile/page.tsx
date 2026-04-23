@@ -73,7 +73,7 @@ function DataPrivacySection({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
-  const canDeleteAccount = deleteConfirmation === "DELETE";
+  const canDeleteAccount = deleteConfirmation === "EXCLUIR";
 
   function closeDeleteModal() {
     if (isDeleting) return;
@@ -107,7 +107,7 @@ function DataPrivacySection({
 
   async function handleDeleteAccount() {
     if (!canDeleteAccount) {
-      addToast("Digite DELETE para confirmar a exclusão.", "error");
+      addToast("Digite EXCLUIR para confirmar a exclusão.", "error");
       return;
     }
 
@@ -208,7 +208,7 @@ function DataPrivacySection({
 
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Para confirmar, digite DELETE
+                Para confirmar, digite EXCLUIR
               </label>
               <input
                 type="text"
@@ -217,7 +217,7 @@ function DataPrivacySection({
                 disabled={isDeleting}
                 autoComplete="off"
                 className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500"
-                placeholder="DELETE"
+                placeholder="EXCLUIR"
               />
             </div>
           </div>

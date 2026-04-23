@@ -6,6 +6,7 @@
 
 ### O que foi feito
 Atualizado o modal de exclusão de conta para usar uma confirmação explícita por digitação de `DELETE`, com texto mais direto e lista dos dados que serão apagados.
+Revisada a palavra de confirmação para `EXCLUIR`, deixando a experiência em português.
 
 ### Arquivos modificados
 - `app/(app)/profile/page.tsx` — modal de exclusão revisado com novo título, conteúdo, campo de confirmação e botão destrutivo bloqueado até validação.

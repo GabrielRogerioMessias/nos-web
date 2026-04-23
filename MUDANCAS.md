@@ -1,5 +1,20 @@
 # Mudanças
 
+## [Fase 2 — Tarefa 2.4.b] Zona de Perigo LGPD no Perfil
+
+**Data:** 2026-04-22
+
+### O que foi feito
+Implementada a seção "Dados e Privacidade" no Perfil, com exportação dos dados do usuário em JSON e exclusão permanente de conta protegida por confirmação em modal.
+
+### Arquivos modificados
+- `app/(app)/profile/page.tsx` — adicionada a seção de privacidade, fluxo de download via blob, modal de confirmação destrutiva e limpeza de sessão após exclusão.
+- `lib/user.ts` — adicionadas as funções `exportUserData()` e `deleteAccount()` para consumir os endpoints LGPD.
+
+### Decisões arquiteturais
+- Reutilizado o `Modal` e o `ToastContainer` existentes no projeto, sem instalar bibliotecas novas.
+- Exportação implementada com `responseType: "blob"` e `URL.createObjectURL` para forçar o download de `meus-dados-nos.json`.
+
 ## [Fase 2 — Tarefa 2.1.b] Onboarding Express — Ajustes cirúrgicos
 
 **Data:** 2026-04-20

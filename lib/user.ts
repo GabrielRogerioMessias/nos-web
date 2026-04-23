@@ -15,3 +15,14 @@ export async function completeOnboarding(): Promise<UserResponse> {
   const { data } = await api.post<UserResponse>("/auth/complete-onboarding");
   return data;
 }
+
+export async function exportUserData(): Promise<Blob> {
+  const { data } = await api.get<Blob>("/auth/export-data", {
+    responseType: "blob",
+  });
+  return data;
+}
+
+export async function deleteAccount(): Promise<void> {
+  await api.delete("/auth/delete-account");
+}

@@ -2,14 +2,15 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, CheckCircle2, AlertCircle } from "lucide-react";
+import { LogOut, CheckCircle2, AlertCircle, Download, Trash2 } from "lucide-react";
 import { AxiosError } from "axios";
-import { getMe } from "@/lib/user";
+import { getMe, exportUserData, deleteAccount } from "@/lib/user";
 import { api } from "@/lib/api";
 import { clearTokens } from "@/lib/auth";
 import type { UserResponse } from "@/types/auth";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
+import { Modal } from "@/components/ui/Modal";
 
 function getInitials(name: string): string {
   return name
@@ -58,6 +59,127 @@ function ProfileSkeleton() {
         </div>
       </div>
     </div>
+  );
+}
+
+function DataPrivacySection({
+  addToast,
+}: {
+  addToast: (msg: string, type?: ToastData["type"]) => void;
+}) {
+  const router = useRouter();
+  const [isExporting, setIsExporting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+
+  async function handleExportData() {
+    setIsExporting(true);
+    try {
+      const blob = await exportUserData();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "meus-dados-nos.json";
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      addToast("Download dos seus dados iniciado.");
+    } catch (err) {
+      const msg = (err as AxiosError<{ message?: string }>)?.response?.data?.message;
+      addToast(msg ?? "Erro ao exportar seus dados. Tente novamente.", "error");
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setIsDeleting(true);
+    try {
+      await deleteAccount();
+      setDeleteModalOpen(false);
+      clearTokens();
+      document.cookie = "accessToken=; Max-Age=0; path=/";
+      document.cookie = "refreshToken=; Max-Age=0; path=/";
+      addToast("Conta excluída com sucesso");
+      setTimeout(() => router.push("/login"), 800);
+    } catch (err) {
+      const msg = (err as AxiosError<{ message?: string }>)?.response?.data?.message;
+      addToast(msg ?? "Erro ao excluir a conta. Tente novamente.", "error");
+      setIsDeleting(false);
+    }
+  }
+
+  const footer = (
+    <div className="flex gap-3">
+      <button
+        type="button"
+        onClick={() => setDeleteModalOpen(false)}
+        disabled={isDeleting}
+        className="flex-1 rounded-lg px-4 py-2.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        onClick={handleDeleteAccount}
+        disabled={isDeleting}
+        className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-red-500 dark:hover:bg-red-600"
+      >
+        {isDeleting ? "Excluindo..." : "Sim, excluir minha conta"}
+      </button>
+    </div>
+  );
+
+  return (
+    <section className="mt-10 border-t border-zinc-100 pt-8 dark:border-zinc-800">
+      <div className="mb-4">
+        <h2 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Dados e Privacidade
+        </h2>
+        <p className="mt-1 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+          Exporte suas informações ou solicite a exclusão permanente da sua conta.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <button
+          type="button"
+          onClick={handleExportData}
+          disabled={isExporting || isDeleting}
+          className="flex items-center justify-center gap-2 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+          <Download size={15} strokeWidth={1.5} />
+          {isExporting ? "Exportando..." : "Exportar meus dados"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setDeleteModalOpen(true)}
+          disabled={isExporting || isDeleting}
+          className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400 dark:hover:bg-red-950/40"
+        >
+          <Trash2 size={15} strokeWidth={1.5} />
+          Excluir conta permanentemente
+        </button>
+      </div>
+
+      {deleteModalOpen && (
+        <Modal
+          title="Excluir conta permanentemente"
+          onClose={() => setDeleteModalOpen(false)}
+          disableOverlayClose={isDeleting}
+          footer={footer}
+        >
+          <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+            Tem certeza absoluta? Esta ação apagará todo o seu histórico financeiro, contas, cartões e cofres de forma irreversível.
+          </p>
+        </Modal>
+      )}
+    </section>
   );
 }
 
@@ -177,6 +299,8 @@ export default function ProfilePage() {
               Sair da conta
             </button>
           </div>
+
+          <DataPrivacySection addToast={addToast} />
         </>
       ) : (
         <p className="text-sm text-zinc-500">Não foi possível carregar o perfil.</p>

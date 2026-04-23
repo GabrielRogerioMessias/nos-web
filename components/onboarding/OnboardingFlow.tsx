@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { AxiosError } from "axios";
 import { Modal } from "@/components/ui/Modal";
@@ -413,8 +413,11 @@ function Step3WithCard({
 }) {
   const [subState, setSubState] = useState<"loading" | "success" | "error">("loading");
   const [finalizing, setFinalizing] = useState(false);
+  const hasCreatedVault = useRef(false);
 
   async function createInvoiceVault() {
+    if (hasCreatedVault.current) return;
+    hasCreatedVault.current = true;
     setSubState("loading");
     const [result] = await Promise.allSettled([
       createVault({ name: `Fatura ${cardName}`, vaultType: "INVOICE", accountId }),
@@ -426,6 +429,7 @@ function Step3WithCard({
       const msg = (result.reason as AxiosError<{ message?: string }>)?.response?.data?.message;
       addToast(msg ?? "Erro ao criar cofre. Tente novamente.", "error");
       setSubState("error");
+      hasCreatedVault.current = false;
     }
   }
 

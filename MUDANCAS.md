@@ -1,5 +1,15 @@
 # Mudanças
 
+## [Fase 2 — Correção] Trava contra cofre duplicado no onboarding
+
+**Data:** 2026-04-23
+
+### O que foi feito
+Corrigido o Passo 3 do onboarding com cartão para impedir múltiplos `POST /vaults` causados por re-renders/Strict Mode.
+
+### Arquivos modificados
+- `components/onboarding/OnboardingFlow.tsx` — adicionada trava com `useRef` antes da criação automática do Cofre de Fatura, liberando retry apenas em caso de falha.
+
 ## [Fase 2 — Tarefa 2.7] Configuração PWA
 
 **Data:** 2026-04-23

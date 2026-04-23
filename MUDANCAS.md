@@ -1,5 +1,23 @@
 # Mudanças
 
+## [Fase 2 — Tarefa 2.7] Configuração PWA
+
+**Data:** 2026-04-23
+
+### O que foi feito
+Configurada a base PWA instalável com manifest nativo do App Router, metadados mobile/iOS e ícones PNG placeholder.
+
+### Arquivos criados
+- `app/manifest.ts` — manifesto PWA com `display: "standalone"`, cores dark e ícones 192/512.
+- `public/icon-192x192.png` — ícone placeholder para instalação.
+- `public/icon-512x512.png` — ícone placeholder para instalação.
+
+### Arquivos modificados
+- `app/layout.tsx` — adicionados `metadata`, `appleWebApp`, ícones, manifest e `viewport.themeColor`.
+
+### Decisões arquiteturais
+- Service Worker não foi adicionado nesta etapa para evitar risco de quebrar o build atual; manifest + meta tags já habilitam a base de instalabilidade.
+
 ## [Fase 2 — Tarefa 2.2] Padronização de erros em componentes
 
 **Data:** 2026-04-22

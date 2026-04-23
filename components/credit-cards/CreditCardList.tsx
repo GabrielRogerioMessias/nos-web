@@ -218,9 +218,17 @@ function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete, onPay
     setNextInvoiceLoading(true);
     getInvoice(card.id, month)
       .then(setNextInvoice)
-      .catch(() => setNextInvoice(null))
+      .catch((error) => {
+        const apiError = error as { response?: { data?: { message?: string; error?: string } } };
+        onPaymentError(
+          apiError.response?.data?.message ||
+          apiError.response?.data?.error ||
+          "Erro ao carregar próxima fatura. Tente novamente."
+        );
+        setNextInvoice(null);
+      })
       .finally(() => setNextInvoiceLoading(false));
-  }, [isInvoicePaid, card.id]);
+  }, [isInvoicePaid, card.id, onPaymentError]);
 
   async function handleConfirmDelete() {
     setDeleting(true);

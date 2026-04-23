@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import * as LucideIcons from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { ToastContainer } from "@/components/ui/Toast";
+import { useToastState } from "@/components/ui/useToastState";
 import type { CategoryRequest, CategoryItem } from "@/lib/categories";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 // ─── catálogo de ícones ───────────────────────────────────────────────────────
 
@@ -41,6 +44,7 @@ interface CategoryFormModalProps {
 }
 
 export function CategoryFormModal({ editing, defaultType = "EXPENSE", onSave, onClose }: CategoryFormModalProps) {
+  const { toasts, addToast, dismissToast } = useToastState();
   const [name, setName] = useState(editing?.name ?? "");
   const [type, setType] = useState<"INCOME" | "EXPENSE">(
     (editing?.type as "INCOME" | "EXPENSE") ?? defaultType
@@ -56,8 +60,8 @@ export function CategoryFormModal({ editing, defaultType = "EXPENSE", onSave, on
     setSaving(true);
     try {
       await onSave({ name: name.trim(), type, icon, color });
-    } catch {
-      // erro tratado no pai
+    } catch (error) {
+      addToast(getApiErrorMessage(error, "Erro ao salvar categoria. Tente novamente."), "error");
     } finally {
       setSaving(false);
     }
@@ -85,13 +89,15 @@ export function CategoryFormModal({ editing, defaultType = "EXPENSE", onSave, on
   );
 
   return (
-    <Modal
-      title={editing ? "Editar categoria" : "Nova categoria"}
-      onClose={onClose}
-      disableOverlayClose={saving}
-      footer={footer}
-    >
-      <form id="category-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <Modal
+        title={editing ? "Editar categoria" : "Nova categoria"}
+        onClose={onClose}
+        disableOverlayClose={saving}
+        footer={footer}
+      >
+        <form id="category-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
         {/* nome */}
         <Input
           label="Nome"
@@ -187,7 +193,8 @@ export function CategoryFormModal({ editing, defaultType = "EXPENSE", onSave, on
             <p className="text-xs text-zinc-400 dark:text-zinc-500">{type === "EXPENSE" ? "Despesa" : "Receita"}</p>
           </div>
         </div>
-      </form>
-    </Modal>
+        </form>
+      </Modal>
+    </>
   );
 }

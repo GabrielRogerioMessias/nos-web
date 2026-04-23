@@ -4,6 +4,9 @@ import { useState } from "react";
 import { AlertTriangle, X } from "lucide-react";
 import { deleteTransaction } from "@/lib/transactions";
 import type { TransactionResponse, AccountResponse } from "@/types/dashboard";
+import { ToastContainer } from "@/components/ui/Toast";
+import { useToastState } from "@/components/ui/useToastState";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -35,6 +38,7 @@ interface Props {
 }
 
 export function VaultReversalModal({ tx, accounts, onClose, onSuccess }: Props) {
+  const { toasts, addToast, dismissToast } = useToastState();
   const [loading, setLoading] = useState(false);
 
   const account = accounts.find((a) => a.id === tx.account?.id);
@@ -55,6 +59,8 @@ export function VaultReversalModal({ tx, accounts, onClose, onSuccess }: Props) 
       await deleteTransaction(tx.id);
       window.dispatchEvent(new CustomEvent("transaction-updated"));
       onSuccess("Transação estornada com sucesso.");
+    } catch (error) {
+      addToast(getApiErrorMessage(error, "Erro ao estornar transação. Tente novamente."), "error");
     } finally {
       setLoading(false);
     }
@@ -62,6 +68,7 @@ export function VaultReversalModal({ tx, accounts, onClose, onSuccess }: Props) 
 
   return (
     <>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <div className="fixed inset-0 z-50 bg-black/30" onClick={!loading ? onClose : undefined} />
 
       <div className="fixed inset-x-4 top-1/2 z-50 mx-auto max-w-sm -translate-y-1/2 rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">

@@ -96,8 +96,12 @@ function Step1({
         setExistingAccount(active);
         if (active) setUseExisting(true);
       })
-      .catch(() => setExistingAccount(null));
-  }, []);
+      .catch((err) => {
+        const msg = (err as AxiosError<{ message?: string }>)?.response?.data?.message;
+        addToast(msg ?? "Erro ao verificar contas existentes. Tente novamente.", "error");
+        setExistingAccount(null);
+      });
+  }, [addToast]);
 
   function validate() {
     const e: FieldErrors = {};
@@ -240,8 +244,12 @@ function Step2({
         setExistingCard(first);
         if (first) setUseExisting(true);
       })
-      .catch(() => setExistingCard(null));
-  }, []);
+      .catch((err) => {
+        const msg = (err as AxiosError<{ message?: string }>)?.response?.data?.message;
+        addToast(msg ?? "Erro ao verificar cartões existentes. Tente novamente.", "error");
+        setExistingCard(null);
+      });
+  }, [addToast]);
 
   function validate() {
     const e: FieldErrors = {};
@@ -421,7 +429,10 @@ function Step3WithCard({
     }
   }
 
-  useEffect(() => { createInvoiceVault(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => { void createInvoiceVault(); });
+    return () => window.cancelAnimationFrame(frame);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleFinalize() {
     setFinalizing(true);

@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { ToastContainer } from "@/components/ui/Toast";
+import { useToastState } from "@/components/ui/useToastState";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type { CreditCardRequest, CreditCardResponse } from "@/types/dashboard";
 
 function maskCurrency(raw: string): string {
@@ -62,6 +65,7 @@ interface CreditCardFormProps {
 }
 
 export function CreditCardForm({ editing, onSave, onCancel }: CreditCardFormProps) {
+  const { toasts, addToast, dismissToast } = useToastState();
   const [values, setValues] = useState<FormState>({
     name: "", brand: "", closingDay: "", dueDay: "", creditLimit: "", color: COLOR_OPTIONS[0],
   });
@@ -110,8 +114,8 @@ export function CreditCardForm({ editing, onSave, onCancel }: CreditCardFormProp
     setSaving(true);
     try {
       await onSave(payload);
-    } catch {
-      // tratado no pai
+    } catch (error) {
+      addToast(getApiErrorMessage(error, "Erro ao salvar cartão. Tente novamente."), "error");
     } finally {
       setSaving(false);
     }
@@ -141,13 +145,15 @@ export function CreditCardForm({ editing, onSave, onCancel }: CreditCardFormProp
   );
 
   return (
-    <Modal
-      title={editing ? "Editar cartão" : "Novo cartão"}
-      onClose={onCancel}
-      disableOverlayClose={saving}
-      footer={footer}
-    >
-      <form id="credit-card-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+    <>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <Modal
+        title={editing ? "Editar cartão" : "Novo cartão"}
+        onClose={onCancel}
+        disableOverlayClose={saving}
+        footer={footer}
+      >
+        <form id="credit-card-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         <Input
           label="Nome do cartão"
           placeholder="Ex: Nubank, Inter Gold"
@@ -234,7 +240,8 @@ export function CreditCardForm({ editing, onSave, onCancel }: CreditCardFormProp
             ))}
           </div>
         </div>
-      </form>
-    </Modal>
+        </form>
+      </Modal>
+    </>
   );
 }

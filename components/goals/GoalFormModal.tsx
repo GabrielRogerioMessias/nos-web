@@ -9,6 +9,9 @@ import { Modal } from "@/components/ui/Modal";
 import type { GoalRequest, GoalResponse } from "@/types/goals";
 import { getAccounts } from "@/lib/accounts";
 import type { AccountResponse } from "@/types/dashboard";
+import { ToastContainer } from "@/components/ui/Toast";
+import { useToastState } from "@/components/ui/useToastState";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 // ─── catálogo ─────────────────────────────────────────────────────────────────
 
@@ -41,6 +44,7 @@ interface Props {
 }
 
 export function GoalFormModal({ editing, onClose, onSave }: Props) {
+  const { toasts, addToast, dismissToast } = useToastState();
   const isEdit = !!editing;
 
   const [name, setName] = useState(editing?.name ?? "");
@@ -69,8 +73,10 @@ export function GoalFormModal({ editing, onClose, onSave }: Props) {
   useEffect(() => {
     getAccounts()
       .then((list) => setAccounts(list.filter((a) => a.active)))
-      .catch(() => {});
-  }, []);
+      .catch((error) => {
+        addToast(getApiErrorMessage(error, "Erro ao carregar contas. Tente novamente."), "error");
+      });
+  }, [addToast]);
 
   useEffect(() => {
     setName(editing?.name ?? "");
@@ -111,8 +117,8 @@ export function GoalFormModal({ editing, onClose, onSave }: Props) {
     setSaving(true);
     try {
       await onSave(payload);
-    } catch {
-      // tratado no pai
+    } catch (error) {
+      addToast(getApiErrorMessage(error, "Erro ao salvar meta. Tente novamente."), "error");
     } finally {
       setSaving(false);
     }
@@ -142,13 +148,15 @@ export function GoalFormModal({ editing, onClose, onSave }: Props) {
   );
 
   return (
-    <Modal
-      title={isEdit ? "Editar meta" : "Nova meta"}
-      onClose={onClose}
-      disableOverlayClose={saving}
-      footer={footer}
-    >
-      <form id="goal-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+    <>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <Modal
+        title={isEdit ? "Editar meta" : "Nova meta"}
+        onClose={onClose}
+        disableOverlayClose={saving}
+        footer={footer}
+      >
+        <form id="goal-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         {/* nome */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm text-zinc-600 dark:text-zinc-400">Nome</label>
@@ -313,7 +321,8 @@ export function GoalFormModal({ editing, onClose, onSave }: Props) {
             })}
           </div>
         </div>
-      </form>
-    </Modal>
+        </form>
+      </Modal>
+    </>
   );
 }

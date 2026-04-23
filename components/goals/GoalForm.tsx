@@ -8,6 +8,9 @@ import type { LucideProps } from "lucide-react";
 import type { GoalRequest, GoalResponse } from "@/types/goals";
 import { getAccounts } from "@/lib/accounts";
 import type { AccountResponse } from "@/types/dashboard";
+import { ToastContainer } from "@/components/ui/Toast";
+import { useToastState } from "@/components/ui/useToastState";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 // ─── catálogo ─────────────────────────────────────────────────────────────────
 
@@ -75,6 +78,7 @@ interface GoalFormProps {
 }
 
 export function GoalForm({ editing, onSave, onCancel }: GoalFormProps) {
+  const { toasts, addToast, dismissToast } = useToastState();
   const [values, setValues] = useState<FormState>({
     name: "",
     description: "",
@@ -93,8 +97,10 @@ export function GoalForm({ editing, onSave, onCancel }: GoalFormProps) {
   useEffect(() => {
     getAccounts()
       .then((list) => setAccounts(list.filter((a) => a.active)))
-      .catch(() => {});
-  }, []);
+      .catch((error) => {
+        addToast(getApiErrorMessage(error, "Erro ao carregar contas. Tente novamente."), "error");
+      });
+  }, [addToast]);
 
   useEffect(() => {
     if (editing) {
@@ -150,8 +156,8 @@ export function GoalForm({ editing, onSave, onCancel }: GoalFormProps) {
     setSaving(true);
     try {
       await onSave(payload);
-    } catch {
-      // tratado no pai
+    } catch (error) {
+      addToast(getApiErrorMessage(error, "Erro ao salvar meta. Tente novamente."), "error");
     } finally {
       setSaving(false);
     }
@@ -160,7 +166,9 @@ export function GoalForm({ editing, onSave, onCancel }: GoalFormProps) {
   const isValid = Object.keys(validate(values, accountId)).length === 0;
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+    <>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
       <Input
         label="Nome da meta"
         placeholder="Ex: Reserva de emergência, Viagem"
@@ -333,6 +341,7 @@ export function GoalForm({ editing, onSave, onCancel }: GoalFormProps) {
           {saving ? "Salvando..." : editing ? "Salvar alterações" : "Criar meta"}
         </button>
       </div>
-    </form>
+      </form>
+    </>
   );
 }

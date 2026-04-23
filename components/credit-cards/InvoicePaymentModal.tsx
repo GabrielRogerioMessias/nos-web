@@ -9,6 +9,7 @@ import type { CreditCardResponse, InvoiceResponse } from "@/types/dashboard";
 import type { AccountResponse } from "@/types/dashboard";
 import type { VaultResponse } from "@/lib/vaults";
 import { Modal } from "@/components/ui/Modal";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 function maskCurrency(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -63,8 +64,14 @@ export function InvoicePaymentModal({ card, invoice, onClose, onSuccess, onError
 
   useEffect(() => {
     Promise.all([
-      getAccounts().catch(() => [] as AccountResponse[]),
-      getVaults().catch(() => [] as VaultResponse[]),
+      getAccounts().catch((error) => {
+        onError(getApiErrorMessage(error, "Erro ao carregar contas. Tente novamente."));
+        return [] as AccountResponse[];
+      }),
+      getVaults().catch((error) => {
+        onError(getApiErrorMessage(error, "Erro ao carregar cofres. Tente novamente."));
+        return [] as VaultResponse[];
+      }),
     ]).then(([accs, vts]) => {
       const activeAccounts = accs.filter((a) => a.active);
       const invoiceVaults = vts.filter((v) => v.vaultType === "INVOICE" && v.active);
@@ -84,7 +91,7 @@ export function InvoicePaymentModal({ card, invoice, onClose, onSuccess, onError
       }
       setLoading(false);
     });
-  }, []);
+  }, [onError]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

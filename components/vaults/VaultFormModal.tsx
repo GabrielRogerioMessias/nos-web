@@ -7,6 +7,9 @@ import { createVault, updateVault, type VaultRequest, type VaultResponse } from 
 import { getAccounts } from "@/lib/accounts";
 import type { AccountResponse } from "@/types/dashboard";
 import { Modal } from "@/components/ui/Modal";
+import { ToastContainer } from "@/components/ui/Toast";
+import { useToastState } from "@/components/ui/useToastState";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 // ─── catálogo ─────────────────────────────────────────────────────────────────
 
@@ -44,6 +47,7 @@ const VAULT_TYPE_OPTIONS: { value: VaultRequest["vaultType"]; label: string }[] 
 ];
 
 export function VaultFormModal({ vault, onClose, onSuccess }: Props) {
+  const { toasts, addToast, dismissToast } = useToastState();
   const isEdit = !!vault;
 
   const [name, setName] = useState(vault?.name ?? "");
@@ -69,8 +73,10 @@ export function VaultFormModal({ vault, onClose, onSuccess }: Props) {
   useEffect(() => {
     getAccounts()
       .then((list) => setAccounts(list.filter((a) => a.active)))
-      .catch(() => {});
-  }, []);
+      .catch((error) => {
+        addToast(getApiErrorMessage(error, "Erro ao carregar contas. Tente novamente."), "error");
+      });
+  }, [addToast]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -87,8 +93,8 @@ export function VaultFormModal({ vault, onClose, onSuccess }: Props) {
         await createVault(payload);
       }
       onSuccess();
-    } catch {
-      // erro tratado no pai
+    } catch (error) {
+      addToast(getApiErrorMessage(error, "Erro ao salvar cofre. Tente novamente."), "error");
     } finally {
       setSaving(false);
     }
@@ -116,13 +122,15 @@ export function VaultFormModal({ vault, onClose, onSuccess }: Props) {
   );
 
   return (
-    <Modal
-      title={isEdit ? "Editar cofre" : "Novo cofre"}
-      onClose={onClose}
-      disableOverlayClose={saving}
-      footer={footer}
-    >
-      <form id="vault-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+    <>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <Modal
+        title={isEdit ? "Editar cofre" : "Novo cofre"}
+        onClose={onClose}
+        disableOverlayClose={saving}
+        footer={footer}
+      >
+        <form id="vault-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
         {/* nome */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm text-zinc-600 dark:text-zinc-400">Nome</label>
@@ -240,7 +248,8 @@ export function VaultFormModal({ vault, onClose, onSuccess }: Props) {
             </p>
           </div>
         </div>
-      </form>
-    </Modal>
+        </form>
+      </Modal>
+    </>
   );
 }

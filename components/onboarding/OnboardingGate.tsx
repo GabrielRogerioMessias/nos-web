@@ -3,10 +3,14 @@
 import { useEffect, useState } from "react";
 import { getMe } from "@/lib/user";
 import { OnboardingFlow } from "./OnboardingFlow";
+import { ToastContainer } from "@/components/ui/Toast";
+import { useToastState } from "@/components/ui/useToastState";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 type GateState = "checking" | "show" | "done";
 
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const { toasts, addToast, dismissToast } = useToastState();
   const [state, setState] = useState<GateState>("checking");
 
   useEffect(() => {
@@ -14,11 +18,12 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
       .then((user) => {
         setState(user.onboardingCompleted ? "done" : "show");
       })
-      .catch(() => {
+      .catch((error) => {
         // falha de rede — não bloqueia o usuário
+        addToast(getApiErrorMessage(error, "Erro ao verificar onboarding. Tente novamente."), "error");
         setState("done");
       });
-  }, []);
+  }, [addToast]);
 
   if (state === "checking") {
     return (
@@ -38,6 +43,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       {children}
       {state === "show" && (
         <OnboardingFlow onComplete={() => setState("done")} />

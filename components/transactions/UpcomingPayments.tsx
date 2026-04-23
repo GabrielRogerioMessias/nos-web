@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle, ChevronRight, Clock, Loader2 } from "lucide-react";
 import {
@@ -8,6 +8,9 @@ import {
   payRecurringTransaction,
   type RecurringTransaction,
 } from "@/lib/recurring-transactions";
+import { ToastContainer } from "@/components/ui/Toast";
+import { useToastState } from "@/components/ui/useToastState";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -81,11 +84,12 @@ interface Props {
 // ─── componente ──────────────────────────────────────────────────────────────
 
 export function UpcomingPayments({ onPaid }: Props) {
+  const { toasts, addToast, dismissToast } = useToastState();
   const [items, setItems] = useState<RecurringTransaction[] | null>(null);
   const [paying, setPaying] = useState<string | null>(null);
   const [paidIds, setPaidIds] = useState<Set<string>>(new Set());
 
-  function load() {
+  const load = useCallback(() => {
     getPendingRecurringTransactions()
       .then((list) => {
         const arr = Array.isArray(list)
@@ -93,8 +97,11 @@ export function UpcomingPayments({ onPaid }: Props) {
           : (list as unknown as { content: RecurringTransaction[] })?.content ?? [];
         setItems(arr);
       })
-      .catch(() => setItems([]));
-  }
+      .catch((error) => {
+        addToast(getApiErrorMessage(error, "Erro ao carregar próximos vencimentos. Tente novamente."), "error");
+        setItems([]);
+      });
+  }, [addToast]);
 
   useEffect(() => {
     load();
@@ -102,7 +109,7 @@ export function UpcomingPayments({ onPaid }: Props) {
     function onUpdate() { load(); }
     window.addEventListener("transaction-updated", onUpdate);
     return () => window.removeEventListener("transaction-updated", onUpdate);
-  }, []);
+  }, [load]);
 
   async function handlePay(item: RecurringTransaction) {
     if (paying) return;
@@ -118,21 +125,34 @@ export function UpcomingPayments({ onPaid }: Props) {
         onPaid?.();
         window.dispatchEvent(new CustomEvent("transaction-updated"));
       }, 800);
-    } catch {
-      // silencia — toast pode ser adicionado pelo pai se necessário
+    } catch (error) {
+      addToast(getApiErrorMessage(error, "Erro ao registrar pagamento. Tente novamente."), "error");
     } finally {
       setPaying(null);
     }
   }
 
-  if (items === null) return <Skeleton />;
-  if (items.length === 0) return null;
+  if (items === null) {
+    return (
+      <>
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+        <Skeleton />
+      </>
+    );
+  }
+  if (items.length === 0) {
+    return <ToastContainer toasts={toasts} onDismiss={dismissToast} />;
+  }
 
   const visible = items.filter((i) => !paidIds.has(i.id)).slice(0, 5);
-  if (visible.length === 0) return null;
+  if (visible.length === 0) {
+    return <ToastContainer toasts={toasts} onDismiss={dismissToast} />;
+  }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
       {/* cabeçalho */}
       <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
         <div className="flex items-center gap-2">
@@ -206,6 +226,7 @@ export function UpcomingPayments({ onPaid }: Props) {
           );
         })}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

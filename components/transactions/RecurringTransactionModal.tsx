@@ -8,6 +8,9 @@ import { getCategories } from "@/lib/transactions";
 import { getVaults, withdrawFromVault, type VaultResponse } from "@/lib/vaults";
 import type { AccountResponse, CategoryResponse, RecurringFrequency } from "@/types/dashboard";
 import { Modal } from "@/components/ui/Modal";
+import { ToastContainer } from "@/components/ui/Toast";
+import { useToastState } from "@/components/ui/useToastState";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -61,6 +64,7 @@ interface Errors {
 // ─── componente ──────────────────────────────────────────────────────────────
 
 export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
+  const { toasts, addToast, dismissToast } = useToastState();
   const [type, setType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
   const [description, setDescription] = useState("");
   const [amountMasked, setAmountMasked] = useState("");
@@ -86,13 +90,20 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
   useEffect(() => {
     getAccounts()
       .then((list) => setAccounts(list.filter((a) => a.active)))
-      .catch(() => {});
-  }, []);
+      .catch((error) => {
+        addToast(getApiErrorMessage(error, "Erro ao carregar contas. Tente novamente."), "error");
+      });
+  }, [addToast]);
 
   useEffect(() => {
-    getCategories(type).then(setCategories).catch(() => {});
+    getCategories(type)
+      .then(setCategories)
+      .catch((error) => {
+        addToast(getApiErrorMessage(error, "Erro ao carregar categorias. Tente novamente."), "error");
+        setCategories([]);
+      });
     setCategoryId("");
-  }, [type]);
+  }, [type, addToast]);
 
   function validate(): boolean {
     const errs: Errors = {};
@@ -132,7 +143,10 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
         const balance = account?.currentBalance ?? 0;
         if (amount > balance) {
           const shortfall = amount - balance;
-          const allVaults = await getVaults().catch(() => [] as VaultResponse[]);
+          const allVaults = await getVaults().catch((error) => {
+            addToast(getApiErrorMessage(error, "Erro ao carregar cofres. Tente novamente."), "error");
+            return [] as VaultResponse[];
+          });
           const eligible = allVaults.filter(
             (v) => v.vaultType === "GENERAL" && v.account?.id === accountId && v.currentBalance >= shortfall
           );
@@ -143,7 +157,9 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
       await commitRecurring();
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
-      setApiError(axiosErr.response?.data?.message ?? "Erro ao criar assinatura.");
+      const msg = axiosErr.response?.data?.message ?? "Erro ao criar assinatura.";
+      setApiError(msg);
+      addToast(msg, "error");
     } finally {
       setSaving(false);
     }
@@ -158,7 +174,9 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
       setIntervention(null);
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
-      setApiError(axiosErr.response?.data?.message ?? "Erro ao processar.");
+      const msg = axiosErr.response?.data?.message ?? "Erro ao processar.";
+      setApiError(msg);
+      addToast(msg, "error");
       setIntervention(null);
     } finally {
       setSaving(false);
@@ -173,7 +191,9 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
       setIntervention(null);
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
-      setApiError(axiosErr.response?.data?.message ?? "Erro ao criar assinatura.");
+      const msg = axiosErr.response?.data?.message ?? "Erro ao criar assinatura.";
+      setApiError(msg);
+      addToast(msg, "error");
       setIntervention(null);
     } finally {
       setSaving(false);
@@ -214,6 +234,7 @@ export function RecurringTransactionModal({ onClose, onSuccess }: Props) {
 
   return (
     <>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <Modal
         title={modalTitle}
         onClose={onClose}

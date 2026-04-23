@@ -7,6 +7,7 @@ import { getAccounts } from "@/lib/accounts";
 import type { AccountResponse } from "@/types/dashboard";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 type OperationType = "deposit" | "withdraw";
 
@@ -59,18 +60,24 @@ export function VaultOperationModal({ vault, type, onClose, onSuccess, onError }
 
   useEffect(() => {
     if (isDeposit) {
-      getAccounts().then((list) => {
-        const active = list.filter((a) => a.active);
-        setAccounts(active);
-        const defaultId = vault.account?.id ?? (active[0]?.id ?? "");
-        setAccountId(defaultId);
-      });
+      getAccounts()
+        .then((list) => {
+          const active = list.filter((a) => a.active);
+          setAccounts(active);
+          const defaultId = vault.account?.id ?? (active[0]?.id ?? "");
+          setAccountId(defaultId);
+        })
+        .catch((error) => {
+          onError(getApiErrorMessage(error, "Erro ao carregar contas. Tente novamente."));
+        });
     } else if (!vault.account && vault.id) {
       getVaultById(vault.id)
         .then((v) => { if (v.account) setResolvedAccount(v.account); })
-        .catch(() => {});
+        .catch((error) => {
+          onError(getApiErrorMessage(error, "Erro ao carregar dados do cofre. Tente novamente."));
+        });
     }
-  }, [isDeposit, vault.account, vault.id]);
+  }, [isDeposit, vault.account, vault.id, onError]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

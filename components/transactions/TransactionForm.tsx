@@ -10,6 +10,9 @@ import { getAccounts } from "@/lib/accounts";
 import { Building2, CreditCard as CreditCardIcon, Layers, AlertTriangle, X } from "lucide-react";
 import { getCreditCards, createInstallmentPlan } from "@/lib/credit-cards";
 import { getVaults, withdrawFromVault, type VaultResponse } from "@/lib/vaults";
+import { ToastContainer } from "@/components/ui/Toast";
+import { useToastState } from "@/components/ui/useToastState";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type {
   TransactionType,
   TransactionRequest,
@@ -143,6 +146,7 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }: TransactionFormProps) {
+  const { toasts, addToast, dismissToast } = useToastState();
   const [tab, setTab] = useState<Tab>((editing?.type as Tab) ?? "EXPENSE");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("account");
   const [creditCardId, setCreditCardId] = useState("");
@@ -179,14 +183,28 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
     if (!editing) setValues((prev) => ({ ...prev, categoryId: "" }));
     getCategories(tab)
       .then(setCategories)
+      .catch((error) => {
+        addToast(getApiErrorMessage(error, "Erro ao carregar categorias. Tente novamente."), "error");
+        setCategories([]);
+      })
       .finally(() => setLoadingCats(false));
-  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab, addToast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // busca contas e cartões uma vez ao montar
   useEffect(() => {
-    getAccounts().then((data) => setAccounts(data.filter((a) => a.active)));
-    getCreditCards().then((data) => setCreditCards(data.filter((c) => c.active)));
-  }, []);
+    getAccounts()
+      .then((data) => setAccounts(data.filter((a) => a.active)))
+      .catch((error) => {
+        addToast(getApiErrorMessage(error, "Erro ao carregar contas. Tente novamente."), "error");
+        setAccounts([]);
+      });
+    getCreditCards()
+      .then((data) => setCreditCards(data.filter((c) => c.active)))
+      .catch((error) => {
+        addToast(getApiErrorMessage(error, "Erro ao carregar cartões. Tente novamente."), "error");
+        setCreditCards([]);
+      });
+  }, [addToast]);
 
   function handleTabChange(next: Tab) {
     if (editing) return;
@@ -302,7 +320,10 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
         const balance = account?.currentBalance ?? 0;
         if (amount > balance) {
           const shortfall = amount - balance;
-          const allVaults = await getVaults().catch(() => [] as VaultResponse[]);
+          const allVaults = await getVaults().catch((error) => {
+            addToast(getApiErrorMessage(error, "Erro ao carregar cofres. Tente novamente."), "error");
+            return [] as VaultResponse[];
+          });
           const eligibleVaults = allVaults.filter(
             (v) =>
               v.vaultType === "GENERAL" &&
@@ -320,8 +341,8 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
       }
 
       await commitTransaction(payload);
-    } catch {
-      // erro tratado no pai
+    } catch (error) {
+      addToast(getApiErrorMessage(error, "Erro ao salvar transação. Tente novamente."), "error");
     } finally {
       setSaving(false);
     }
@@ -339,8 +360,8 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
       );
       await commitTransaction(intervention.pendingPayload);
       setIntervention(null);
-    } catch {
-      // erro tratado no pai
+    } catch (error) {
+      addToast(getApiErrorMessage(error, "Erro ao resgatar do cofre. Tente novamente."), "error");
     } finally {
       setSaving(false);
     }
@@ -353,8 +374,8 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
     try {
       await commitTransaction(intervention.pendingPayload);
       setIntervention(null);
-    } catch {
-      // erro tratado no pai
+    } catch (error) {
+      addToast(getApiErrorMessage(error, "Erro ao salvar transação. Tente novamente."), "error");
     } finally {
       setSaving(false);
     }
@@ -371,6 +392,7 @@ export function TransactionForm({ editing = null, onSave, onSuccess, onCancel }:
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex h-full flex-col">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <div className="flex flex-1 flex-col gap-5 overflow-y-auto pb-4">
 
         {/* 1. TIPO */}

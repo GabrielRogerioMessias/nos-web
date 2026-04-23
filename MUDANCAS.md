@@ -1,5 +1,23 @@
 # Mudanças
 
+## [Fase 2 — Tarefa 2.2] Padronização de erros em componentes
+
+**Data:** 2026-04-22
+
+### O que foi feito
+Eliminados `catch` silenciosos em componentes e modais de formulário, substituindo falhas de API por feedback visual com Toast ou callbacks de erro já existentes.
+
+### Arquivos criados
+- `lib/api-error.ts` — helper para extrair mensagens de erro vindas da API com fallback amigável.
+- `components/ui/useToastState.ts` — hook leve para reutilizar o `ToastContainer` existente em componentes sem toast próprio.
+
+### Arquivos modificados
+- `components/categories/CategoryFormModal.tsx`, `components/credit-cards/CreditCardForm.tsx`, `components/credit-cards/CreditCardList.tsx`, `components/credit-cards/InvoicePaymentModal.tsx`, `components/goals/GoalForm.tsx`, `components/goals/GoalFormModal.tsx`, `components/legal/TermsGate.tsx`, `components/onboarding/OnboardingFlow.tsx`, `components/onboarding/OnboardingGate.tsx`, `components/transactions/RecurringTransactionModal.tsx`, `components/transactions/TransactionForm.tsx`, `components/transactions/UpcomingPayments.tsx`, `components/transactions/VaultReversalModal.tsx`, `components/vaults/VaultFormModal.tsx`, `components/vaults/VaultOperationModal.tsx`.
+
+### Decisões arquiteturais
+- A lógica de negócio foi preservada; apenas tratamento de erro e feedback visual foram adicionados.
+- Estados de loading/saving continuam sendo liberados em `finally` ou no próprio fluxo de erro existente.
+
 ## [Fase 2 — Ajuste UX] Leitura legal dentro do modal
 
 **Data:** 2026-04-22

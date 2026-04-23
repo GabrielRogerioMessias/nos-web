@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { AxiosError } from "axios";
 import { acceptTerms, getMe } from "@/lib/user";
 import type { UserResponse } from "@/types/auth";
-import { ToastContainer, type ToastData } from "@/components/ui/Toast";
+import { ToastContainer } from "@/components/ui/Toast";
+import { useToastState } from "@/components/ui/useToastState";
 
 type GateState = "checking" | "accepted" | "blocked";
 
@@ -13,7 +14,7 @@ export function TermsGate({ children }: { children: React.ReactNode }) {
   const [, setUser] = useState<UserResponse | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
-  const [toasts, setToasts] = useState<ToastData[]>([]);
+  const { toasts, addToast, dismissToast } = useToastState();
 
   useEffect(() => {
     getMe()
@@ -21,10 +22,12 @@ export function TermsGate({ children }: { children: React.ReactNode }) {
         setUser(currentUser);
         setState(currentUser.termsAccepted ? "accepted" : "blocked");
       })
-      .catch(() => {
+      .catch((error) => {
+        const msg = (error as AxiosError<{ message?: string }>)?.response?.data?.message;
+        addToast(msg ?? "Erro ao verificar aceite dos termos. Tente novamente.", "error");
         setState("accepted");
       });
-  }, []);
+  }, [addToast]);
 
   useEffect(() => {
     if (state !== "blocked") return;
@@ -36,14 +39,6 @@ export function TermsGate({ children }: { children: React.ReactNode }) {
       document.body.style.overflow = previousOverflow;
     };
   }, [state]);
-
-  function addToast(message: string, type: ToastData["type"] = "success") {
-    setToasts((prev) => [...prev, { id: Date.now(), message, type }]);
-  }
-
-  function dismissToast(id: number) {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }
 
   async function handleAcceptTerms() {
     setIsAccepting(true);

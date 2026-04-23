@@ -1,5 +1,21 @@
 # Mudanças
 
+## [Fase 2 — Tarefa 2.3.b] Formulários vivos no Perfil
+
+**Data:** 2026-04-22
+
+### O que foi feito
+Conectados os formulários de Dados Pessoais e Segurança na tela de Perfil, permitindo atualização de nome/e-mail e troca de senha com validação, Toasts e redirecionamento seguro após alteração de senha.
+
+### Arquivos modificados
+- `app/(app)/profile/page.tsx` — campos de perfil tornados editáveis, adicionada seção "Segurança" com troca de senha e mantida a Zona de Perigo ao final.
+- `lib/user.ts` — adicionadas as funções `updateProfile()` e `changePassword()` para consumir os endpoints de autenticação.
+
+### Decisões arquiteturais
+- Estados simples por formulário (`isSavingProfile` e `isChangingPassword`), sem biblioteca externa.
+- Erros de API seguem o padrão de Toast com `error.response?.data?.message`.
+- A troca de senha limpa tokens/cookies e redireciona para `/login`.
+
 ## [Fase 2 — Ajuste LGPD] Confirmação reforçada de exclusão
 
 **Data:** 2026-04-22

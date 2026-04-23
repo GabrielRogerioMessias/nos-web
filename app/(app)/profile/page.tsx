@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, CheckCircle2, AlertCircle, Download, Trash2 } from "lucide-react";
 import { AxiosError } from "axios";
-import { getMe, exportUserData, deleteAccount } from "@/lib/user";
+import { getMe, updateProfile, changePassword, exportUserData, deleteAccount } from "@/lib/user";
 import { api } from "@/lib/api";
 import { clearTokens } from "@/lib/auth";
 import type { UserResponse } from "@/types/auth";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ToastContainer, type ToastData } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
+
+const inputClass =
+  "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500";
 
 function getInitials(name: string): string {
   return name
@@ -59,6 +62,232 @@ function ProfileSkeleton() {
         </div>
       </div>
     </div>
+  );
+}
+
+function PersonalDataSection({
+  user,
+  onUserUpdated,
+  addToast,
+  isResending,
+  onResendVerification,
+}: {
+  user: UserResponse;
+  onUserUpdated: (user: UserResponse) => void;
+  addToast: (msg: string, type?: ToastData["type"]) => void;
+  isResending: boolean;
+  onResendVerification: () => void;
+}) {
+  const [name, setName] = useState(user.name);
+  const [email, setEmail] = useState(user.email);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  useEffect(() => {
+    setName(user.name);
+    setEmail(user.email);
+  }, [user.email, user.name]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    const emailChanged = trimmedEmail !== user.email;
+
+    if (!trimmedName) {
+      addToast("Informe seu nome.", "error");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      addToast("Informe um e-mail válido.", "error");
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      const updatedUser = await updateProfile({ name: trimmedName, email: trimmedEmail });
+      onUserUpdated(updatedUser);
+      addToast("Perfil atualizado com sucesso");
+      if (emailChanged) {
+        addToast("Verifique sua caixa de entrada para confirmar o novo e-mail");
+      }
+    } catch (err) {
+      const msg = (err as AxiosError<{ message?: string }>)?.response?.data?.message;
+      addToast(msg ?? "Erro ao atualizar perfil. Tente novamente.", "error");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
+
+  const unchanged = name.trim() === user.name && email.trim() === user.email;
+
+  return (
+    <section className="mt-8 rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
+      <h2 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Dados Pessoais</h2>
+      <form onSubmit={handleSubmit} className="mt-4 space-y-5">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide dark:text-zinc-400">
+            Nome
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            disabled={isSavingProfile}
+            className={inputClass}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide dark:text-zinc-400">
+            E-mail
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            disabled={isSavingProfile}
+            className={inputClass}
+          />
+          {user.emailVerified ? (
+            <div className="flex items-center gap-1.5 pt-0.5">
+              <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-500" />
+              <span className="text-xs text-emerald-700 dark:text-emerald-500">E-mail verificado</span>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5 pt-0.5">
+              <div className="flex items-center gap-1.5">
+                <AlertCircle size={13} className="text-amber-500 dark:text-amber-400" />
+                <span className="text-xs text-amber-600 dark:text-amber-400">E-mail não verificado</span>
+              </div>
+              <button
+                type="button"
+                onClick={onResendVerification}
+                disabled={isResending}
+                className="w-fit text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-400 dark:hover:text-zinc-200"
+              >
+                {isResending ? "Enviando..." : "Reenviar e-mail de verificação"}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={isSavingProfile || unchanged}
+          className="rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          {isSavingProfile ? "Salvando..." : "Salvar alterações"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function SecuritySection({
+  addToast,
+}: {
+  addToast: (msg: string, type?: ToastData["type"]) => void;
+}) {
+  const router = useRouter();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  function clearPasswordFields() {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (newPassword.length < 8) {
+      addToast("A nova senha deve ter pelo menos 8 caracteres.", "error");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      addToast("As senhas não coincidem.", "error");
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await changePassword({ currentPassword, newPassword });
+      addToast("Senha alterada com sucesso. Faça login novamente.");
+      setTimeout(() => {
+        clearTokens();
+        document.cookie = "accessToken=; Max-Age=0; path=/";
+        document.cookie = "refreshToken=; Max-Age=0; path=/";
+        router.push("/login");
+      }, 1200);
+    } catch (err) {
+      const msg = (err as AxiosError<{ message?: string }>)?.response?.data?.message;
+      addToast(msg ?? "Erro ao alterar senha. Tente novamente.", "error");
+      clearPasswordFields();
+      setIsChangingPassword(false);
+    }
+  }
+
+  return (
+    <section className="mt-6 rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
+      <h2 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Segurança</h2>
+      <form onSubmit={handleSubmit} className="mt-4 space-y-5">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide dark:text-zinc-400">
+            Senha Atual
+          </label>
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(event) => setCurrentPassword(event.target.value)}
+            disabled={isChangingPassword}
+            autoComplete="current-password"
+            className={inputClass}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide dark:text-zinc-400">
+            Nova Senha
+          </label>
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            disabled={isChangingPassword}
+            autoComplete="new-password"
+            className={inputClass}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide dark:text-zinc-400">
+            Confirmar Nova Senha
+          </label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            disabled={isChangingPassword}
+            autoComplete="new-password"
+            className={inputClass}
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+          className="rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          {isChangingPassword ? "Alterando..." : "Alterar senha"}
+        </button>
+      </form>
+    </section>
   );
 }
 
@@ -283,52 +512,15 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="mt-8 space-y-5">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide dark:text-zinc-400">
-                Nome
-              </label>
-              <input
-                type="text"
-                value={user.name}
-                disabled
-                className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-500 cursor-not-allowed dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
-              />
-            </div>
+          <PersonalDataSection
+            user={user}
+            onUserUpdated={setUser}
+            addToast={addToast}
+            isResending={isResending}
+            onResendVerification={handleResendVerification}
+          />
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide dark:text-zinc-400">
-                E-mail
-              </label>
-              <input
-                type="email"
-                value={user.email}
-                disabled
-                className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-500 cursor-not-allowed dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
-              />
-              {user.emailVerified ? (
-                <div className="flex items-center gap-1.5 pt-0.5">
-                  <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-500" />
-                  <span className="text-xs text-emerald-700 dark:text-emerald-500">E-mail verificado</span>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1.5 pt-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <AlertCircle size={13} className="text-amber-500 dark:text-amber-400" />
-                    <span className="text-xs text-amber-600 dark:text-amber-400">E-mail não verificado</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleResendVerification}
-                    disabled={isResending}
-                    className="w-fit text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-400 dark:hover:text-zinc-200"
-                  >
-                    {isResending ? "Enviando..." : "Reenviar e-mail de verificação"}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          <SecuritySection addToast={addToast} />
 
           <div className="mt-10 border-t border-zinc-100 pt-8 dark:border-zinc-800 flex flex-col gap-4">
             <div className="flex items-center justify-between">

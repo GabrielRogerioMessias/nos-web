@@ -11,6 +11,15 @@ export async function updateMe(payload: { name: string }): Promise<UserResponse>
   return data;
 }
 
+export async function updateProfile(payload: { name: string; email: string }): Promise<UserResponse> {
+  const { data } = await api.put<UserResponse>("/auth/update-profile", payload);
+  return data;
+}
+
+export async function changePassword(payload: { currentPassword: string; newPassword: string }): Promise<void> {
+  await api.post("/auth/change-password", payload);
+}
+
 export async function completeOnboarding(): Promise<UserResponse> {
   const { data } = await api.post<UserResponse>("/auth/complete-onboarding");
   return data;

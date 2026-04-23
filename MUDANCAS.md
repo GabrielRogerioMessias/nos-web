@@ -1,5 +1,19 @@
 # Mudanças
 
+## [Fase 2 — Ajuste UX] Perfil com abas minimalistas
+
+**Data:** 2026-04-22
+
+### O que foi feito
+Refatorada a tela de Perfil para usar abas locais, reduzindo a altura visual e separando Dados Pessoais, Segurança e Avançado sem recarregar a página.
+
+### Arquivos modificados
+- `app/(app)/profile/page.tsx` — adicionado sistema de tabs, centralização com `max-w-lg mx-auto`, remoção dos cards em volta dos formulários e movimentação da Zona de Perigo para a aba Avançado.
+
+### Decisões arquiteturais
+- A lógica de API, validações, Toasts e redirecionamentos foi preservada.
+- A aba Avançado concentra ações menos frequentes, incluindo Aparência, Logout e LGPD.
+
 ## [Fase 2 — Tarefa 2.3.b] Formulários vivos no Perfil
 
 **Data:** 2026-04-22

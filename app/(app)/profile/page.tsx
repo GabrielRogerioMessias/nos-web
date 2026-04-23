@@ -15,6 +15,14 @@ import { Modal } from "@/components/ui/Modal";
 const inputClass =
   "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500";
 
+type ProfileTab = "personal" | "security" | "advanced";
+
+const profileTabs: Array<{ id: ProfileTab; label: string }> = [
+  { id: "personal", label: "Dados Pessoais" },
+  { id: "security", label: "Segurança" },
+  { id: "advanced", label: "Avançado" },
+];
+
 function getInitials(name: string): string {
   return name
     .trim()
@@ -123,9 +131,8 @@ function PersonalDataSection({
   const unchanged = name.trim() === user.name && email.trim() === user.email;
 
   return (
-    <section className="mt-8 rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
-      <h2 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Dados Pessoais</h2>
-      <form onSubmit={handleSubmit} className="mt-4 space-y-5">
+    <section>
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide dark:text-zinc-400">
             Nome
@@ -234,9 +241,8 @@ function SecuritySection({
   }
 
   return (
-    <section className="mt-6 rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
-      <h2 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Segurança</h2>
-      <form onSubmit={handleSubmit} className="mt-4 space-y-5">
+    <section>
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide dark:text-zinc-400">
             Senha Atual
@@ -379,7 +385,7 @@ function DataPrivacySection({
   );
 
   return (
-    <section className="mt-10 border-t border-zinc-100 pt-8 dark:border-zinc-800">
+    <section className="border-t border-zinc-100 pt-6 dark:border-zinc-800">
       <div className="mb-4">
         <h2 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Dados e Privacidade
@@ -461,6 +467,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [isResending, setIsResending] = useState(false);
+  const [activeTab, setActiveTab] = useState<ProfileTab>("personal");
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
   useEffect(() => {
@@ -496,7 +503,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-md">
+    <div className="mx-auto w-full max-w-lg">
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <h1 className="mb-8 text-xl font-medium text-zinc-900 dark:text-zinc-50">Perfil</h1>
 
@@ -512,31 +519,61 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <PersonalDataSection
-            user={user}
-            onUserUpdated={setUser}
-            addToast={addToast}
-            isResending={isResending}
-            onResendVerification={handleResendVerification}
-          />
+          <div className="mt-6 flex rounded-full border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
+            {profileTabs.map((tab) => {
+              const selected = activeTab === tab.id;
 
-          <SecuritySection addToast={addToast} />
-
-          <div className="mt-10 border-t border-zinc-100 pt-8 dark:border-zinc-800 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide dark:text-zinc-400">Aparência</span>
-              <ThemeToggle />
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 hover:border-red-100 dark:border-zinc-700 dark:hover:bg-red-950/40 dark:hover:border-red-900"
-            >
-              <LogOut size={15} strokeWidth={1.5} />
-              Sair da conta
-            </button>
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 rounded-full px-3 py-2 text-xs font-medium transition-colors ${
+                    selected
+                      ? "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
+                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                  }`}
+                  aria-pressed={selected}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
 
-          <DataPrivacySection addToast={addToast} />
+          <div className="pt-8">
+            {activeTab === "personal" && (
+              <PersonalDataSection
+                user={user}
+                onUserUpdated={setUser}
+                addToast={addToast}
+                isResending={isResending}
+                onResendVerification={handleResendVerification}
+              />
+            )}
+
+            {activeTab === "security" && <SecuritySection addToast={addToast} />}
+
+            {activeTab === "advanced" && (
+              <div className="space-y-8">
+                <section className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide dark:text-zinc-400">Aparência</span>
+                    <ThemeToggle />
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center justify-center gap-2 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 hover:border-red-100 dark:border-zinc-700 dark:hover:bg-red-950/40 dark:hover:border-red-900"
+                  >
+                    <LogOut size={15} strokeWidth={1.5} />
+                    Sair da conta
+                  </button>
+                </section>
+
+                <DataPrivacySection addToast={addToast} />
+              </div>
+            )}
+          </div>
         </>
       ) : (
         <p className="text-sm text-zinc-500">Não foi possível carregar o perfil.</p>

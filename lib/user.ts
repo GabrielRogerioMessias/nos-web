@@ -25,6 +25,10 @@ export async function completeOnboarding(): Promise<UserResponse> {
   return data;
 }
 
+export async function acceptTerms(): Promise<void> {
+  await api.post("/auth/accept-terms", { version: "1.0" });
+}
+
 export async function exportUserData(): Promise<Blob> {
   const { data } = await api.get<Blob>("/auth/export-data", {
     responseType: "blob",

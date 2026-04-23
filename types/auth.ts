@@ -6,6 +6,7 @@ export interface UserResponse {
   createdAt: string;
   emailVerified: boolean;
   onboardingCompleted: boolean;
+  termsAccepted: boolean;
 }
 
 export interface AuthResponse {

@@ -1,5 +1,27 @@
 # Mudanças
 
+## [Fase 2 — Tarefa 2.5.b] Páginas legais e aceite obrigatório
+
+**Data:** 2026-04-22
+
+### O que foi feito
+Criadas as páginas públicas de Termos de Uso e Política de Privacidade, além da trava obrigatória para usuários logados que ainda não aceitaram os termos.
+
+### Arquivos criados
+- `app/termos-de-uso/page.tsx` — página legal placeholder com botão Voltar.
+- `app/politica-de-privacidade/page.tsx` — página legal placeholder com botão Voltar.
+- `components/legal/LegalPlaceholderPage.tsx` — layout compartilhado das páginas legais.
+- `components/legal/TermsGate.tsx` — gate fullscreen de aceite obrigatório com checkbox, links legais e POST de aceite.
+
+### Arquivos modificados
+- `app/(app)/layout.tsx` — adicionada a trava `TermsGate` no fluxo protegido, antes do onboarding.
+- `lib/user.ts` — adicionada a função `acceptTerms()` para consumir `POST /auth/accept-terms`.
+- `types/auth.ts` — adicionada a flag `termsAccepted` em `UserResponse`.
+
+### Decisões arquiteturais
+- O gate usa overlay fullscreen próprio sem botão de fechar, mantendo o `Modal` genérico intacto.
+- Em falha de leitura do `/me`, o app não é bloqueado por erro de rede; em falha no aceite, o usuário recebe Toast de erro.
+
 ## [Fase 2 — Ajuste UX] Ações globais no cabeçalho do Perfil
 
 **Data:** 2026-04-22

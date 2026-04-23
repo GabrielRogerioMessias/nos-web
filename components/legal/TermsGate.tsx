@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AxiosError } from "axios";
 import { acceptTerms, getMe } from "@/lib/user";
@@ -90,21 +89,30 @@ export function TermsGate({ children }: { children: React.ReactNode }) {
               </p>
             </div>
 
-            <div className="mt-6 flex flex-col gap-2 text-sm sm:flex-row">
-              <Link
-                href="/termos-de-uso"
-                target="_blank"
-                className="rounded-lg border border-zinc-200 px-4 py-2 text-center text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
-              >
-                Termos de Uso
-              </Link>
-              <Link
-                href="/politica-de-privacidade"
-                target="_blank"
-                className="rounded-lg border border-zinc-200 px-4 py-2 text-center text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
-              >
-                Política de Privacidade
-              </Link>
+            <div className="mt-6 max-h-60 space-y-5 overflow-y-auto rounded-md border border-zinc-200 bg-zinc-50 p-4 pr-3 [scrollbar-color:theme(colors.zinc.300)_transparent] [scrollbar-width:thin] dark:border-zinc-800/50 dark:bg-zinc-900/50 dark:[scrollbar-color:theme(colors.zinc.700)_transparent]">
+              <section className="space-y-2">
+                <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+                  Termos de Uso
+                </h2>
+                <p className="text-xs leading-6 text-zinc-500 dark:text-zinc-400">
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer finibus, massa sed tempor gravida, justo sem fermentum nibh, non facilisis sem velit vitae arcu. Sed vitae lectus vel justo luctus posuere. Donec vitae neque in nunc blandit vulputate.
+                </p>
+                <p className="text-xs leading-6 text-zinc-500 dark:text-zinc-400">
+                  Praesent commodo, nibh at viverra tincidunt, lorem arcu placerat urna, sed convallis justo magna non lectus. Curabitur vitae urna id neque aliquet posuere. Nulla facilisi. Suspendisse potenti.
+                </p>
+              </section>
+
+              <section className="space-y-2 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+                <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+                  Política de Privacidade
+                </h2>
+                <p className="text-xs leading-6 text-zinc-500 dark:text-zinc-400">
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis non elit sed metus luctus efficitur. Aliquam erat volutpat. Morbi ac justo a nisl cursus suscipit sed at risus. Vivamus vel sapien nec arcu faucibus dignissim.
+                </p>
+                <p className="text-xs leading-6 text-zinc-500 dark:text-zinc-400">
+                  Fusce sed mi a enim aliquam luctus. Maecenas at libero ac lectus tincidunt porttitor. Etiam at urna ac nibh pharetra ullamcorper. Donec non massa non justo tincidunt gravida.
+                </p>
+              </section>
             </div>
 
             <label className="mt-6 flex cursor-pointer gap-3 rounded-2xl border border-zinc-200 p-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">

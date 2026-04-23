@@ -1,5 +1,15 @@
 # Mudanças
 
+## [Fase 2 — Ajuste UX] Leitura legal dentro do modal
+
+**Data:** 2026-04-22
+
+### O que foi feito
+Removidos os links externos do modal de aceite obrigatório e adicionada uma área interna rolável com seções de Termos de Uso e Política de Privacidade.
+
+### Arquivos modificados
+- `components/legal/TermsGate.tsx` — substituídos links `target="_blank"` por caixa scrollável interna, mantendo checkbox obrigatório e modal bloqueante.
+
 ## [Fase 2 — Tarefa 2.5.b] Páginas legais e aceite obrigatório
 
 **Data:** 2026-04-22

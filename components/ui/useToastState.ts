@@ -1,13 +1,15 @@
 import { useCallback, useState } from "react";
 import type { ToastData } from "@/components/ui/Toast";
 
-let toastId = 0;
+function uniqueId(): number {
+  return Date.now() * 1000 + Math.floor(Math.random() * 1000);
+}
 
 export function useToastState() {
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
   const addToast = useCallback((message: string, type: ToastData["type"] = "success") => {
-    const id = ++toastId;
+    const id = uniqueId();
     setToasts((prev) => [...prev, { id, message, type }]);
   }, []);
 

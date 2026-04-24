@@ -15,6 +15,7 @@ import { ToastContainer, type ToastData } from "@/components/ui/Toast";
 import { AccountForm } from "@/components/accounts/AccountForm";
 import { AccountList, AccountListSkeleton } from "@/components/accounts/AccountList";
 import { ContextualHelpDrawer } from "@/components/help/ContextualHelpDrawer";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -28,6 +29,8 @@ let toastIdCounter = 0;
 export default function ContasPage() {
   const [accounts, setAccounts] = useState<AccountResponse[] | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<AccountResponse | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editing, setEditing] = useState<AccountResponse | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
@@ -118,7 +121,7 @@ export default function ContasPage() {
     }
   }
 
-  async function handleDelete(account: AccountResponse) {
+  function handleDelete(account: AccountResponse) {
     const balance = Number(account.currentBalance ?? account.initialBalance ?? 0);
     if (balance > 0) {
       addToast(
@@ -127,12 +130,21 @@ export default function ContasPage() {
       );
       return;
     }
+    setAccountToDelete(account);
+  }
+
+  async function confirmDeleteAccount() {
+    if (!accountToDelete) return;
+    setIsDeleting(true);
     try {
-      await deleteAccount(account.id);
-      setAccounts((prev) => (prev ? prev.filter((a) => a.id !== account.id) : prev));
+      await deleteAccount(accountToDelete.id);
+      setAccounts((prev) => (prev ? prev.filter((a) => a.id !== accountToDelete.id) : prev));
       addToast("Conta excluída.");
     } catch {
       addToast("Erro ao excluir a conta.", "error");
+    } finally {
+      setIsDeleting(false);
+      setAccountToDelete(null);
     }
   }
 
@@ -181,6 +193,16 @@ export default function ContasPage() {
           editing={editing}
           onSave={handleSave}
           onCancel={closeModal}
+        />
+      )}
+
+      {accountToDelete && (
+        <ConfirmDeleteModal
+          title={`Excluir "${accountToDelete.name}"?`}
+          description="Esta ação não pode ser desfeita e os dados serão perdidos."
+          isLoading={isDeleting}
+          onConfirm={confirmDeleteAccount}
+          onCancel={() => setAccountToDelete(null)}
         />
       )}
 

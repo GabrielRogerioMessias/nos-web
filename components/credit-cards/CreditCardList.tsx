@@ -6,6 +6,7 @@ import { ChevronRight, Pencil, Trash2, MoreHorizontal, CreditCard, Plus } from "
 import type { CreditCardResponse, InvoiceResponse } from "@/types/dashboard";
 import { getInvoice } from "@/lib/credit-cards";
 import { InvoicePaymentModal } from "@/components/credit-cards/InvoicePaymentModal";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 
 function nextMonthISO(current: string): string {
   const [y, m] = current.split("-").map(Number);
@@ -154,40 +155,6 @@ function ProgressBar({ value, color }: ProgressBarProps) {
   );
 }
 
-// ─── confirmação de exclusão ───────────────────────────────────────────────────
-
-interface DeleteConfirmProps {
-  cardName: string;
-  deleting: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
-function DeleteConfirm({ cardName, deleting, onConfirm, onCancel }: DeleteConfirmProps) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-red-100 bg-red-50 px-4 py-3 dark:border-red-900/40 dark:bg-red-950/20">
-      <p className="text-xs text-red-600 dark:text-red-400">
-        Remover <span className="font-medium">{cardName}</span>?
-      </p>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={onCancel}
-          disabled={deleting}
-          className="rounded px-2 py-0.5 text-xs text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 dark:hover:bg-zinc-800"
-        >
-          Não
-        </button>
-        <button
-          onClick={onConfirm}
-          disabled={deleting}
-          className="rounded bg-red-500 px-2 py-0.5 text-xs font-medium text-white hover:bg-red-600 disabled:opacity-50"
-        >
-          {deleting ? "Removendo…" : "Sim, remover"}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ─── card individual ───────────────────────────────────────────────────────────
 
@@ -396,16 +363,14 @@ function CreditCardItem({ card, invoice, invoiceLoading, onEdit, onDelete, onPay
         </div>
       )}
 
-      {/* ── confirmação de exclusão ── */}
       {confirming && (
-        <div className="border-t border-zinc-100 px-6 pb-5 pt-4 dark:border-zinc-800">
-          <DeleteConfirm
-            cardName={card.name}
-            deleting={deleting}
-            onConfirm={handleConfirmDelete}
-            onCancel={() => setConfirming(false)}
-          />
-        </div>
+        <ConfirmDeleteModal
+          title={`Excluir "${card.name}"?`}
+          description="Esta ação não pode ser desfeita e os dados serão perdidos."
+          isLoading={deleting}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setConfirming(false)}
+        />
       )}
 
       {/* ── modal de pagamento ── */}

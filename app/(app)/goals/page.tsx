@@ -14,6 +14,7 @@ import { VaultOperationModal } from "@/components/vaults/VaultOperationModal";
 import { VaultStatementSheet } from "@/components/vaults/VaultStatementSheet";
 import { NoAccountModal } from "@/components/accounts/NoAccountModal";
 import { ContextualHelpDrawer } from "@/components/help/ContextualHelpDrawer";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,8 @@ export default function GoalsPage() {
   const [depositGoal, setDepositGoal] = useState<GoalResponse | null>(null);
   const [withdrawGoal, setWithdrawGoal] = useState<GoalResponse | null>(null);
   const [statementGoal, setStatementGoal] = useState<GoalResponse | null>(null);
+  const [goalToDelete, setGoalToDelete] = useState<GoalResponse | null>(null);
+  const [isDeletingGoal, setIsDeletingGoal] = useState(false);
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
   function addToast(message: string, type: ToastData["type"] = "success") {
@@ -98,13 +101,22 @@ export default function GoalsPage() {
     }
   }
 
-  async function handleDelete(goal: GoalResponse) {
+  function handleDelete(goal: GoalResponse) {
+    setGoalToDelete(goal);
+  }
+
+  async function confirmDeleteGoal() {
+    if (!goalToDelete) return;
+    setIsDeletingGoal(true);
     try {
-      await deleteGoal(goal.id);
-      setGoals((prev) => prev ? prev.filter((g) => g.id !== goal.id) : prev);
+      await deleteGoal(goalToDelete.id);
+      setGoals((prev) => prev ? prev.filter((g) => g.id !== goalToDelete.id) : prev);
       addToast("Meta excluída.");
     } catch {
       addToast("Erro ao excluir a meta.", "error");
+    } finally {
+      setIsDeletingGoal(false);
+      setGoalToDelete(null);
     }
   }
 
@@ -212,6 +224,16 @@ export default function GoalsPage() {
               .then((list) => setAccounts(list.filter((a) => a.active)))
               .catch(() => {});
           }}
+        />
+      )}
+
+      {goalToDelete && (
+        <ConfirmDeleteModal
+          title={`Excluir "${goalToDelete.name}"?`}
+          description="Esta ação não pode ser desfeita e os dados serão perdidos."
+          isLoading={isDeletingGoal}
+          onConfirm={confirmDeleteGoal}
+          onCancel={() => setGoalToDelete(null)}
         />
       )}
 

@@ -13,7 +13,7 @@ const DEFAULT_HELP_CONTENT: HelpContent = {
   title: "Seu painel financeiro",
   paragraphs: [
     "Aqui você vê o resumo de tudo: saldo das contas, cartões e cofres.",
-    "Saldo de Verdade é o valor que realmente sobra na sua conta depois de descontar o que já está comprometido com faturas e assinaturas. Se esse número está positivo, você tem folga. Se está negativo, cuidado — você está gastando mais do que tem disponível.",
+    "Saldo de Verdade é o valor que realmente sobra depois de descontar o que já está comprometido com faturas e assinaturas. Se esse número está positivo, você tem folga. Se está negativo, cuidado.",
     "Use o botão Nova transação pra registrar qualquer gasto, receita ou transferência.",
   ],
 };
@@ -23,8 +23,16 @@ const HELP_CONTENT_BY_ROUTE: Record<string, HelpContent> = {
     title: "Seu painel financeiro",
     paragraphs: [
       "Aqui você vê o resumo de tudo: saldo das contas, cartões e cofres.",
-      "Saldo de Verdade é o valor que realmente sobra na sua conta depois de descontar o que já está comprometido com faturas e assinaturas. Se esse número está positivo, você tem folga. Se está negativo, cuidado — você está gastando mais do que tem disponível.",
+      "Saldo de Verdade é o valor que realmente sobra depois de descontar o que já está comprometido com faturas e assinaturas. Se esse número está positivo, você tem folga. Se está negativo, cuidado.",
       "Use o botão Nova transação pra registrar qualquer gasto, receita ou transferência.",
+    ],
+  },
+  "/contas": {
+    title: "Suas contas bancárias",
+    paragraphs: [
+      "Aqui você cadastra e acompanha suas contas: corrente, poupança, carteira digital — qualquer lugar onde seu dinheiro fica.",
+      "O saldo exibido é calculado automaticamente a partir das transações que você lançou. Se o saldo não bate com o do banco, provavelmente falta lançar alguma movimentação.",
+      "Você pode ter quantas contas quiser. Cada conta tem seus próprios cofres e seu próprio extrato.",
     ],
   },
   "/extrato": {

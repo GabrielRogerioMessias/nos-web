@@ -9,6 +9,7 @@ import {
   updateCreditCard,
   deleteCreditCard,
   getInvoice,
+  getCurrentInvoice,
 } from "@/lib/credit-cards";
 import { getAccounts } from "@/lib/accounts";
 import type { CreditCardResponse, CreditCardRequest, InvoiceResponse } from "@/types/dashboard";
@@ -56,11 +57,8 @@ export default function CartoesPage() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }
 
-  // busca faturas do mês atual para cada cartão
+  // busca a fatura em aberto de cada cartão (backend decide qual é a atual)
   const loadInvoices = useCallback(async (list: CreditCardResponse[]) => {
-    const month = currentMonthISO();
-
-    // marca todos como carregando
     setInvoiceLoading(Object.fromEntries(list.map((c) => [c.id, true])));
 
     const ctrl = new AbortController();
@@ -69,16 +67,9 @@ export default function CartoesPage() {
     await Promise.allSettled(
       list.map(async (card) => {
         try {
-          const data = await getInvoice(card.id, month);
+          const data = await getCurrentInvoice(card.id);
           if (ctrl.signal.aborted) return;
-          // shift: fatura do mês atual paga → exibe o próximo ciclo em destaque
-          if (data.paid) {
-            const next = nextMonthISO(month);
-            const nextData = await getInvoice(card.id, next).catch(() => data);
-            if (!ctrl.signal.aborted) setInvoices((prev) => ({ ...prev, [card.id]: nextData }));
-          } else {
-            setInvoices((prev) => ({ ...prev, [card.id]: data }));
-          }
+          setInvoices((prev) => ({ ...prev, [card.id]: data }));
         } catch {
           if (ctrl.signal.aborted) return;
           setInvoices((prev) => ({ ...prev, [card.id]: null }));

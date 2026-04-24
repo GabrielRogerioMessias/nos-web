@@ -32,6 +32,11 @@ export async function getInvoice(id: string, month: string): Promise<InvoiceResp
   return data;
 }
 
+export async function getCurrentInvoice(id: string): Promise<InvoiceResponse> {
+  const { data } = await api.get<InvoiceResponse>(`/credit-cards/${id}/invoice`);
+  return data;
+}
+
 export interface InstallmentPlan {
   id: string;
   description: string;

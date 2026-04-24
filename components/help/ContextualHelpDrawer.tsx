@@ -141,10 +141,10 @@ export function ContextualHelpDrawer() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="contextual-help-title"
-            className="absolute inset-x-0 bottom-0 flex max-h-[68dvh] flex-col rounded-t-3xl border-t border-zinc-800/50 bg-zinc-950 md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[82dvh] md:w-[calc(100%-2rem)] md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:border md:border-zinc-800"
+            className="absolute inset-x-0 bottom-0 flex max-h-[68dvh] flex-col rounded-t-3xl border-t border-zinc-200/50 bg-white dark:border-zinc-800/50 dark:bg-zinc-950 md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[82dvh] md:w-[calc(100%-2rem)] md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:border md:border-zinc-200 md:dark:border-zinc-800"
           >
             <div className="flex justify-center px-6 pt-4 md:hidden">
-              <span className="h-1 w-10 rounded-full bg-zinc-700" />
+              <span className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-700" />
             </div>
 
             <div className="flex items-center justify-between px-6 pb-2 pt-5 md:px-8 md:pt-8">
@@ -154,7 +154,7 @@ export function ContextualHelpDrawer() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-900 hover:text-zinc-200"
+                className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-900 dark:hover:text-zinc-200"
                 aria-label="Fechar ajuda contextual"
               >
                 <X size={16} />
@@ -162,12 +162,12 @@ export function ContextualHelpDrawer() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 pb-12 pt-4 md:px-8 md:pb-10">
-              <h2 id="contextual-help-title" className="mb-4 text-lg font-medium tracking-tight text-zinc-100">
+              <h2 id="contextual-help-title" className="mb-4 text-lg font-medium tracking-tight text-zinc-900 dark:text-zinc-100">
                 {helpContent.title}
               </h2>
               <div className="space-y-4">
                 {helpContent.paragraphs.map((p, i) => (
-                  <p key={i} className="text-sm leading-relaxed text-zinc-400">
+                  <p key={i} className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                     {p}
                   </p>
                 ))}

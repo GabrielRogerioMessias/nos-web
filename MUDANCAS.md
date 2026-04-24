@@ -1,5 +1,10 @@
 # Mudanças
 
+## [UX] Substituição de window.confirm por modal customizado
+
+- `components/ui/ConfirmDeleteModal.tsx` — novo modal de confirmação de exclusão com título/descrição dinâmicos, botão destrutivo com loading, suporte light/dark.
+- `app/(app)/cofres/page.tsx` — `confirm()` substituído por `ConfirmDeleteModal` com estado `vaultToDelete` + `isDeleting`.
+
 ## [Fase 2 — Correção] Trava contra cofre duplicado no onboarding
 
 **Data:** 2026-04-23

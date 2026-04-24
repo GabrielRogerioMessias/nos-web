@@ -6,6 +6,7 @@ import { NoAccountModal } from "@/components/accounts/NoAccountModal";
 import * as LucideIcons from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import { getVaults, deleteVault, type VaultResponse } from "@/lib/vaults";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 import { getAccounts } from "@/lib/accounts";
 import { VaultFormModal } from "@/components/vaults/VaultFormModal";
 import { VaultOperationModal } from "@/components/vaults/VaultOperationModal";
@@ -226,6 +227,8 @@ export default function CofresPage() {
   const [modal, setModal] = useState<Modal | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const [flashVaultId, setFlashVaultId] = useState<string | null>(null);
+  const [vaultToDelete, setVaultToDelete] = useState<VaultResponse | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   function addToast(message: string, type: ToastData["type"] = "error") {
     const id = ++toastIdCounter;
@@ -257,9 +260,12 @@ export default function CofresPage() {
     setModal({ type: "create" });
   }
 
-  async function handleDelete(vault: VaultResponse) {
-    if (!confirm(`Excluir o cofre "${vault.name}"? Esta ação não pode ser desfeita.`)) return;
-    await deleteVault(vault.id);
+  async function confirmDelete() {
+    if (!vaultToDelete) return;
+    setIsDeleting(true);
+    await deleteVault(vaultToDelete.id);
+    setIsDeleting(false);
+    setVaultToDelete(null);
     load();
   }
 
@@ -325,7 +331,7 @@ export default function CofresPage() {
               onStatement={() => setModal({ type: "statement", vault })}
               onReconcile={() => setModal({ type: "reconcile", vault })}
               onEdit={() => setModal({ type: "edit", vault })}
-              onDelete={() => handleDelete(vault)}
+              onDelete={() => setVaultToDelete(vault)}
               yieldFlash={flashVaultId === vault.id}
             />
           ))}
@@ -392,6 +398,16 @@ export default function CofresPage() {
               .then((list) => setAccounts(list.filter((a) => a.active).map((a) => a.id)))
               .catch(() => {});
           }}
+        />
+      )}
+
+      {vaultToDelete && (
+        <ConfirmDeleteModal
+          title={`Excluir "${vaultToDelete.name}"?`}
+          description="Esta ação não pode ser desfeita e os dados serão perdidos."
+          isLoading={isDeleting}
+          onConfirm={confirmDelete}
+          onCancel={() => setVaultToDelete(null)}
         />
       )}
 
